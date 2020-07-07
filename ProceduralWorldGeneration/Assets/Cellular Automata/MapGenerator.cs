@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace AtomosZ.Tutorials.CellAuto
 {
@@ -19,6 +20,10 @@ namespace AtomosZ.Tutorials.CellAuto
 			"\nValues of 3 or 6 creates The Nothing.")]
 		[Range(3, 6)]
 		public int minNeighboursToSurvive = 4;
+		[Tooltip("Minimum size of wall or pillar that can exist (will be filled in with empty space)")]
+		public int wallThresholdSize = 15;
+		[Tooltip("Minimum size of room that can exist (will be filled in with wall)")]
+		public int roomThresholdSize = 50;
 		public bool keepWalls;
 
 		private int[,] map;
@@ -50,16 +55,19 @@ namespace AtomosZ.Tutorials.CellAuto
 
 			for (int i = 0; i < smoothSteps; ++i)
 			{
-				if (SmoothMap())
+				if (!SmoothMap())
 					break;
 			}
+
+			ProcessMap();
 
 			MeshGenerator meshGen = GetComponent<MeshGenerator>();
 			meshGen.GenerateMesh(map, 1);
 		}
 
+
 		/// <summary>
-		/// Returns true when no changes found.
+		/// Returns false when no changes found.
 		/// </summary>
 		/// <returns></returns>
 		public bool SmoothMap(bool regenerateMeshImmediately = false)
@@ -76,7 +84,7 @@ namespace AtomosZ.Tutorials.CellAuto
 				}
 			}
 
-			
+
 
 			for (int x = 0; x < width; ++x)
 			{
@@ -98,6 +106,79 @@ namespace AtomosZ.Tutorials.CellAuto
 			return false;
 		}
 
+		private void ProcessMap()
+		{
+			List<List<Coord>> wallRegions = GetRegions(1);
+
+			foreach (List<Coord> wallRegion in wallRegions)
+				if (wallRegion.Count < wallThresholdSize)
+					foreach (Coord tile in wallRegion)
+						map[tile.tileX, tile.tileY] = 0;
+
+			List<List<Coord>> roomRegions = GetRegions(0);
+
+			foreach (List<Coord> roomRegion in roomRegions)
+				if (roomRegion.Count < roomThresholdSize)
+					foreach (Coord tile in roomRegion)
+						map[tile.tileX, tile.tileY] = 1;
+		}
+
+
+		private List<List<Coord>> GetRegions(int tileType)
+		{
+			List<List<Coord>> regions = new List<List<Coord>>();
+			int[,] mapFlags = new int[width, height];
+			for (int x = 0; x < width; ++x)
+			{
+				for (int y = 0; y < height; ++y)
+				{
+					if (mapFlags[x, y] == 0 && map[x, y] == tileType)
+					{
+						List<Coord> newRegion = GetRegionTiles(x, y);
+						regions.Add(newRegion);
+						foreach (Coord tile in newRegion)
+							mapFlags[tile.tileX, tile.tileY] = 1;
+					}
+				}
+			}
+
+			return regions;
+		}
+
+
+		private List<Coord> GetRegionTiles(int startX, int startY)
+		{
+			List<Coord> tiles = new List<Coord>();
+			int[,] mapFlags = new int[width, height];
+			int tileType = map[startX, startY];
+
+			Queue<Coord> queue = new Queue<Coord>();
+			queue.Enqueue(new Coord(startX, startY));
+			mapFlags[startX, startY] = 1;
+
+			while (queue.Count > 0)
+			{
+				Coord tile = queue.Dequeue();
+				tiles.Add(tile);
+				for (int x = tile.tileX - 1; x <= tile.tileX + 1; ++x)
+				{
+					for (int y = tile.tileY - 1; y <= tile.tileY + 1; ++y)
+					{
+						if (IsInMapRange(x, y) && (y == tile.tileY || x == tile.tileX))
+						{
+							if (mapFlags[x, y] == 0 && map[x, y] == tileType)
+							{
+								mapFlags[x, y] = 1;
+								queue.Enqueue(new Coord(x, y));
+							}
+						}
+					}
+				}
+			}
+
+			return tiles;
+		}
+
 
 		private int GetSurroundingWallCount(int[,] map, int checkX, int checkY)
 		{
@@ -115,6 +196,12 @@ namespace AtomosZ.Tutorials.CellAuto
 			}
 
 			return wallCount;
+		}
+
+
+		private bool IsInMapRange(int x, int y)
+		{
+			return x >= 0 && x < width && y >= 0 && y < height;
 		}
 
 
@@ -142,8 +229,20 @@ namespace AtomosZ.Tutorials.CellAuto
 		}
 
 
-		void OnDrawGizmos()
+		struct Coord
 		{
+			public int tileX, tileY;
+
+			public Coord(int tileX, int tileY)
+			{
+				this.tileX = tileX;
+				this.tileY = tileY;
+			}
+		}
+
+
+		//void OnDrawGizmos()
+		//{
 			//if (map != null)
 			//{
 			//	for (int x = 0; x < width; ++x)
@@ -156,6 +255,6 @@ namespace AtomosZ.Tutorials.CellAuto
 			//		}
 			//	}
 			//}
-		}
+		//}
 	}
 }
