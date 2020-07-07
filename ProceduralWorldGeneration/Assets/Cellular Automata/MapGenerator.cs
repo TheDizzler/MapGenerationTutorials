@@ -14,6 +14,8 @@ namespace AtomosZ.Tutorials.CellAuto
 		[Range(10, 100)]
 		public int randomFillPercent;
 		public int smoothSteps = 5;
+		[Tooltip("A value of 4 is standard. A value of 5 with randomFillPercent" +
+			"around 63 generates very eerie-looking platforms after 6 or 7 smooth steps. (try seed = Test Seed)")]
 		public int minNeighboursToSurvive = 4;
 		public bool keepWalls;
 
