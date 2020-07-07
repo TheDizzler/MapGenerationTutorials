@@ -116,11 +116,79 @@ namespace AtomosZ.Tutorials.CellAuto
 						map[tile.tileX, tile.tileY] = 0;
 
 			List<List<Coord>> roomRegions = GetRegions(0);
+			List<Room> survivingRooms = new List<Room>();
 
 			foreach (List<Coord> roomRegion in roomRegions)
 				if (roomRegion.Count < roomThresholdSize)
 					foreach (Coord tile in roomRegion)
 						map[tile.tileX, tile.tileY] = 1;
+				else
+					survivingRooms.Add(new Room(roomRegion, map));
+
+			ConnectClosestRooms(survivingRooms);
+		}
+
+
+		private void ConnectClosestRooms(List<Room> rooms)
+		{
+			int bestDist = 0;
+			Coord bestTileA = new Coord();
+			Coord bestTileB = new Coord();
+			Room bestRoomA = new Room();
+			Room bestRoomB = new Room();
+
+			foreach (Room roomA in rooms)
+			{
+				bool possibleConnectionFound = false;
+				foreach (Room roomB in rooms)
+				{
+					if (roomA.IsConnected(roomB))
+					{
+						possibleConnectionFound = false;
+						break;
+					}
+
+					if (roomA == roomB)
+						continue;
+
+					for (int tileIndexA = 0; tileIndexA < roomA.edgeTiles.Count; ++tileIndexA)
+					{
+						for (int tileIndexB = 0; tileIndexB < roomB.edgeTiles.Count; ++tileIndexB)
+						{
+							Coord tileA = roomA.edgeTiles[tileIndexA];
+							Coord tileB = roomB.edgeTiles[tileIndexB];
+							int distanceBetweenRooms = (int)(Mathf.Pow(tileA.tileX - tileB.tileX, 2) + Mathf.Pow(tileA.tileY - tileB.tileY, 2));
+
+							if (distanceBetweenRooms < bestDist || !possibleConnectionFound)
+							{
+								bestDist = distanceBetweenRooms;
+								possibleConnectionFound = true;
+								bestTileA = tileA;
+								bestTileB = tileB;
+								bestRoomA = roomA;
+								bestRoomB = roomB;
+							}
+						}
+					}
+				}
+
+				if (possibleConnectionFound)
+				{
+					CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
+				}
+			}
+		}
+
+
+		private void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB)
+		{
+			Room.ConnectRooms(roomA, roomB);
+			Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.green, 20);
+		}
+
+		private Vector3 CoordToWorldPoint(Coord tile)
+		{
+			return new Vector3(-width * .5f + .5f + tile.tileX, 0, -height * .5f + .5f + tile.tileY);
 		}
 
 
@@ -229,7 +297,7 @@ namespace AtomosZ.Tutorials.CellAuto
 		}
 
 
-		struct Coord
+		private struct Coord
 		{
 			public int tileX, tileY;
 
@@ -241,20 +309,49 @@ namespace AtomosZ.Tutorials.CellAuto
 		}
 
 
-		//void OnDrawGizmos()
-		//{
-			//if (map != null)
-			//{
-			//	for (int x = 0; x < width; ++x)
-			//	{
-			//		for (int y = 0; y < height; ++y)
-			//		{
-			//			Gizmos.color = (map[x, y] == 1) ? Color.black : Color.white;
-			//			Vector3 pos = new Vector3(-width / 2 + x + .5f, 0, -height / 2 + y + .5f);
-			//			Gizmos.DrawCube(pos, Vector3.one);
-			//		}
-			//	}
-			//}
-		//}
+		private class Room
+		{
+			public List<Coord> tiles;
+			public List<Coord> edgeTiles;
+			public List<Room> connectedRooms;
+			public int roomSize;
+
+			public Room() { }
+
+			public Room(List<Coord> roomTiles, int[,] map)
+			{
+				tiles = roomTiles;
+				roomSize = tiles.Count;
+				connectedRooms = new List<Room>();
+				edgeTiles = new List<Coord>();
+				foreach (Coord tile in tiles)
+				{
+					for (int x = tile.tileX - 1; x <= tile.tileX + 1; ++x)
+					{
+						for (int y = tile.tileY - 1; y <= tile.tileY + 1; ++y)
+						{
+							if (x < 0 || y < 0 || x > map.GetLength(0) - 1 || y > map.GetLength(1) - 1)
+								continue;
+							if ((x == tile.tileX || y == tile.tileY))
+								if (map[x, y] == 1)
+								{
+									edgeTiles.Add(tile);
+								}
+						}
+					}
+				}
+			}
+
+			public static void ConnectRooms(Room roomA, Room roomB)
+			{
+				roomA.connectedRooms.Add(roomB);
+				roomB.connectedRooms.Add(roomA);
+			}
+
+			public bool IsConnected(Room otherRoom)
+			{
+				return connectedRooms.Contains(otherRoom);
+			}
+		}
 	}
 }
