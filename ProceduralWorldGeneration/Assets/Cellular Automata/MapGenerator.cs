@@ -31,7 +31,7 @@ namespace AtomosZ.Tutorials.CellAuto
 		{
 			if (Input.GetKeyDown(KeyCode.Return))
 			{
-				SmoothMap();
+				GenerateMap();
 			}
 		}
 
@@ -48,14 +48,19 @@ namespace AtomosZ.Tutorials.CellAuto
 
 			for (int i = 0; i < smoothSteps; ++i)
 			{
-				SmoothMap();
+				if (SmoothMap())
+					break;
 			}
 
 			MeshGenerator meshGen = GetComponent<MeshGenerator>();
 			meshGen.GenerateMesh(map, 1);
 		}
 
-		public void SmoothMap()
+		/// <summary>
+		/// Returns true when no changes found.
+		/// </summary>
+		/// <returns></returns>
+		public bool SmoothMap(bool regenerateMeshImmediately = false)
 		{
 			int[,] last = (int[,])map.Clone();
 			for (int x = keepWalls ? 1 : 0; x < (keepWalls ? width - 1 : width); ++x)
@@ -69,21 +74,26 @@ namespace AtomosZ.Tutorials.CellAuto
 				}
 			}
 
-			bool changed = false;
+			
+
 			for (int x = 0; x < width; ++x)
 			{
 				for (int y = 0; y < height; ++y)
 				{
 					if (last[x, y] != map[x, y])
 					{
-						changed = true;
-						return;
+						if (regenerateMeshImmediately)
+						{
+							MeshGenerator meshGen = GetComponent<MeshGenerator>();
+							meshGen.GenerateMesh(map, 1);
+						}
+
+						return true;
 					}
 				}
 			}
 
-			if (!changed)
-				Debug.Log("Map stopped smoothing");
+			return false;
 		}
 
 

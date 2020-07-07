@@ -20,7 +20,7 @@ namespace AtomosZ.Tutorials.CellAuto.Editors
 
 			if (GUILayout.Button("Next Step"))
 			{
-				mapGen.SmoothMap();
+				mapGen.SmoothMap(true);
 				SceneView.RepaintAll();
 			}
 		}
