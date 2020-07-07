@@ -338,6 +338,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1046649531}
   - component: {fileID: 1046649530}
+  - component: {fileID: 1046649532}
   m_Layer: 0
   m_Name: MapGenerator
   m_TagString: Untagged
@@ -357,11 +358,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd295676fc0989d4a95fd0ff557d732c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: random
+  seed: Test Seed
   useRandomSeed: 0
   width: 60
-  height: 60
-  randomFillPercent: 38
+  height: 56
+  randomFillPercent: 47
   smoothSteps: 5
   minNeighboursToSurvive: 4
   keepWalls: 1
@@ -379,3 +380,15 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1046649532
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1046649529}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27b545c7cbd930345b979040d3d1beac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
