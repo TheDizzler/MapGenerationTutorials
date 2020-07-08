@@ -27,8 +27,10 @@ namespace AtomosZ.Tutorials.CellAuto
 		public int roomThresholdSize = 50;
 		[Tooltip("Size of passages that connect rooms.")]
 		public int passageSize = 1;
-		[Tooltip("Whether the border can be culled in the smoothing step away.")]
+		public int borderSize = 1;
+		[Tooltip("Whether the border can be culled in the smoothing step.")]
 		public bool keepBorder;
+
 
 		private int[,] map;
 
@@ -64,9 +66,6 @@ namespace AtomosZ.Tutorials.CellAuto
 			}
 
 			ProcessMap();
-
-			MeshGenerator meshGen = GetComponent<MeshGenerator>();
-			meshGen.GenerateMesh(map, 1);
 		}
 
 
@@ -98,8 +97,7 @@ namespace AtomosZ.Tutorials.CellAuto
 					{
 						if (regenerateMeshImmediately)
 						{
-							MeshGenerator meshGen = GetComponent<MeshGenerator>();
-							meshGen.GenerateMesh(map, 1);
+							ProcessMap();
 						}
 
 						return true;
@@ -129,13 +127,34 @@ namespace AtomosZ.Tutorials.CellAuto
 				else
 					survivingRooms.Add(new Room(roomRegion, map));
 
+			if (survivingRooms.Count == 0)
+			{
+				Debug.LogWarning("Map contains no rooms!");
+				return;
+			}
+
 			survivingRooms.Sort();
 			survivingRooms[0].isMainRoom = true;
 			survivingRooms[0].isAccessibleFromMainRoom = true;
 
 			ConnectClosestRooms(survivingRooms);
-		}
 
+			int[,] borderedMap = new int[width + borderSize * 2, height + borderSize * 2];
+			for (int x = 0; x < borderedMap.GetLength(0); ++x)
+			{
+				for (int y = 0; y < borderedMap.GetLength(1); ++y)
+				{
+					if (x >= borderSize && x < width + borderSize
+						&& y >= borderSize && y < height + borderSize)
+						borderedMap[x, y] = map[x - borderSize, y - borderSize];
+					else
+						borderedMap[x, y] = 1;
+				}
+			}
+
+			MeshGenerator meshGen = GetComponent<MeshGenerator>();
+			meshGen.GenerateMesh(borderedMap, 1);
+		}
 
 		private void ConnectClosestRooms(List<Room> allRooms, bool forceAccessibilityFromMainRoom = false)
 		{
@@ -217,7 +236,7 @@ namespace AtomosZ.Tutorials.CellAuto
 		private void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB)
 		{
 			Room.ConnectRooms(roomA, roomB);
-			Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.green, 20);
+			//Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.green, 20);
 
 			List<Coord> line = GetLine(tileA, tileB);
 			foreach (Coord c in line)
