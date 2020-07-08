@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AtomosZ.Tutorials.CellAuto
@@ -24,7 +25,10 @@ namespace AtomosZ.Tutorials.CellAuto
 		public int wallThresholdSize = 15;
 		[Tooltip("Minimum size of room that can exist (will be filled in with wall)")]
 		public int roomThresholdSize = 50;
-		public bool keepWalls;
+		[Tooltip("Size of passages that connect rooms.")]
+		public int passageSize = 1;
+		[Tooltip("Whether the border can be culled in the smoothing step away.")]
+		public bool keepBorder;
 
 		private int[,] map;
 
@@ -73,9 +77,9 @@ namespace AtomosZ.Tutorials.CellAuto
 		public bool SmoothMap(bool regenerateMeshImmediately = false)
 		{
 			int[,] last = (int[,])map.Clone();
-			for (int x = keepWalls ? 1 : 0; x < (keepWalls ? width - 1 : width); ++x)
+			for (int x = keepBorder ? 1 : 0; x < (keepBorder ? width - 1 : width); ++x)
 			{
-				for (int y = keepWalls ? 1 : 0; y < (keepWalls ? height - 1 : height); ++y)
+				for (int y = keepBorder ? 1 : 0; y < (keepBorder ? height - 1 : height); ++y)
 				{
 					if (GetSurroundingWallCount(last, x, y) < minNeighboursToSurvive)
 						map[x, y] = 0;
@@ -125,30 +129,51 @@ namespace AtomosZ.Tutorials.CellAuto
 				else
 					survivingRooms.Add(new Room(roomRegion, map));
 
+			survivingRooms.Sort();
+			survivingRooms[0].isMainRoom = true;
+			survivingRooms[0].isAccessibleFromMainRoom = true;
+
 			ConnectClosestRooms(survivingRooms);
 		}
 
 
-		private void ConnectClosestRooms(List<Room> rooms)
+		private void ConnectClosestRooms(List<Room> allRooms, bool forceAccessibilityFromMainRoom = false)
 		{
+			List<Room> roomListA = new List<Room>();
+			List<Room> roomListB = new List<Room>();
+
+			if (forceAccessibilityFromMainRoom)
+				foreach (Room room in allRooms)
+					if (!room.isAccessibleFromMainRoom)
+						roomListA.Add(room);
+					else
+						roomListB.Add(room);
+			else
+			{
+				roomListA = allRooms;
+				roomListB = allRooms;
+			}
+
 			int bestDist = 0;
 			Coord bestTileA = new Coord();
 			Coord bestTileB = new Coord();
 			Room bestRoomA = new Room();
 			Room bestRoomB = new Room();
 
-			foreach (Room roomA in rooms)
-			{
-				bool possibleConnectionFound = false;
-				foreach (Room roomB in rooms)
-				{
-					if (roomA.IsConnected(roomB))
-					{
-						possibleConnectionFound = false;
-						break;
-					}
+			bool possibleConnectionFound = false;
 
-					if (roomA == roomB)
+			foreach (Room roomA in roomListA)
+			{
+				if (!forceAccessibilityFromMainRoom)
+				{
+					possibleConnectionFound = false;
+					if (roomA.connectedRooms.Count > 0)
+						continue;
+				}
+
+				foreach (Room roomB in roomListB)
+				{
+					if (roomA == roomB || roomA.IsConnected(roomB))
 						continue;
 
 					for (int tileIndexA = 0; tileIndexA < roomA.edgeTiles.Count; ++tileIndexA)
@@ -172,11 +197,20 @@ namespace AtomosZ.Tutorials.CellAuto
 					}
 				}
 
-				if (possibleConnectionFound)
+				if (possibleConnectionFound && !forceAccessibilityFromMainRoom)
 				{
 					CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
 				}
 			}
+
+			if (possibleConnectionFound && forceAccessibilityFromMainRoom)
+			{
+				CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
+				ConnectClosestRooms(allRooms, true);
+			}
+
+			if (!forceAccessibilityFromMainRoom)
+				ConnectClosestRooms(allRooms, true);
 		}
 
 
@@ -184,6 +218,75 @@ namespace AtomosZ.Tutorials.CellAuto
 		{
 			Room.ConnectRooms(roomA, roomB);
 			Debug.DrawLine(CoordToWorldPoint(tileA), CoordToWorldPoint(tileB), Color.green, 20);
+
+			List<Coord> line = GetLine(tileA, tileB);
+			foreach (Coord c in line)
+				DrawCircle(c, passageSize);
+		}
+
+		private void DrawCircle(Coord c, int r)
+		{
+			for (int x = -r; x <= r; ++x)
+				for (int y = -r; y <= r; ++y)
+				{
+					if (x * x + y * y <= r * r)
+					{
+						int drawX = c.tileX + x;
+						int drawY = c.tileY + y;
+						if (IsInMapRange(drawX, drawY))
+							map[drawX, drawY] = 0;
+					}
+				}
+		}
+
+		private List<Coord> GetLine(Coord from, Coord to)
+		{
+			List<Coord> line = new List<Coord>();
+			int x = from.tileX;
+			int y = from.tileY;
+
+			int dx = to.tileX - from.tileX;
+			int dy = to.tileY - from.tileY;
+
+			bool inverted = false;
+			int step = Math.Sign(dx);
+			int gradientStep = Math.Sign(dy);
+
+			int longest = Mathf.Abs(dx);
+			int shortest = Mathf.Abs(dy);
+
+			if (longest < shortest)
+			{
+				inverted = true;
+				longest = Mathf.Abs(dy);
+				shortest = Mathf.Abs(dx);
+				step = Math.Sign(dy);
+				gradientStep = Math.Sign(dx);
+			}
+
+			int gradientAccumulation = longest / 2;
+			for (int i = 0; i < longest; ++i)
+			{
+				line.Add(new Coord(x, y));
+				if (inverted)
+					y += step;
+				else
+					x += step;
+
+				gradientAccumulation += shortest;
+				if (gradientAccumulation >= longest)
+				{
+					if (inverted)
+
+						x += gradientStep;
+					else
+						y += gradientStep;
+
+					gradientAccumulation -= longest;
+				}
+			}
+
+			return line;
 		}
 
 		private Vector3 CoordToWorldPoint(Coord tile)
@@ -309,12 +412,15 @@ namespace AtomosZ.Tutorials.CellAuto
 		}
 
 
-		private class Room
+		private class Room : IComparable<Room>
 		{
 			public List<Coord> tiles;
 			public List<Coord> edgeTiles;
 			public List<Room> connectedRooms;
 			public int roomSize;
+			public bool isAccessibleFromMainRoom;
+			public bool isMainRoom;
+
 
 			public Room() { }
 
@@ -342,8 +448,23 @@ namespace AtomosZ.Tutorials.CellAuto
 				}
 			}
 
+			public void SetAccessibleFromMainRoom()
+			{
+				if (!isAccessibleFromMainRoom)
+				{
+					isAccessibleFromMainRoom = true;
+					foreach (Room connectedRoom in connectedRooms)
+						connectedRoom.SetAccessibleFromMainRoom();
+				}
+			}
+
 			public static void ConnectRooms(Room roomA, Room roomB)
 			{
+				if (roomA.isAccessibleFromMainRoom)
+					roomB.SetAccessibleFromMainRoom();
+				else if (roomB.isAccessibleFromMainRoom)
+					roomA.SetAccessibleFromMainRoom();
+
 				roomA.connectedRooms.Add(roomB);
 				roomB.connectedRooms.Add(roomA);
 			}
@@ -351,6 +472,11 @@ namespace AtomosZ.Tutorials.CellAuto
 			public bool IsConnected(Room otherRoom)
 			{
 				return connectedRooms.Contains(otherRoom);
+			}
+
+			public int CompareTo(Room otherRoom)
+			{
+				return otherRoom.roomSize.CompareTo(roomSize);
 			}
 		}
 	}
