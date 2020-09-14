@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -56,37 +55,6 @@ namespace AtomosZ.Voronoi
 			}
 
 			CalculateTriangulations(needsRetriangulation);
-			//for (int i = 0; i < needsRetriangulation.Count - 2; ++i)
-			//{
-			//	Site p1 = needsRetriangulation[i];
-			//	for (int j = i + 1; j < needsRetriangulation.Count - 1; ++j)
-			//	{
-			//		Site p2 = needsRetriangulation[j];
-			//		for (int k = j + 1; k < needsRetriangulation.Count; ++k)
-			//		{
-			//			Site p3 = needsRetriangulation[k];
-			//			DelaunayTriangle circle = GetCircle(p1, p2, p3);
-
-			//			if (circle == null)
-			//				continue;
-			//			foreach (var centroid in centroids)
-			//			{
-			//				if (centroid == p1 || centroid == p2 || centroid == p3)
-			//					continue;
-			//				if ((centroid.position - circle.center).sqrMagnitude <= circle.radiusSqr)
-			//				{
-			//					// this triangle is invalid
-			//					circle = null;
-			//					break;
-			//				}
-			//			}
-
-
-			//			if (circle != null)
-			//				triangles.Add(circle);
-			//		}
-			//	}
-			//}
 		}
 
 		private void DelaunayTriangulation()
@@ -175,6 +143,8 @@ namespace AtomosZ.Voronoi
 				if (!edgeFound)
 				{
 					Edge edge = new Edge(p1, p2);
+					p1.connectedEdges.Add(edge);
+					p2.connectedEdges.Add(edge);
 					newEdges.Add(edge);
 					edges.Add(edge);
 				}
@@ -194,6 +164,8 @@ namespace AtomosZ.Voronoi
 				if (!edgeFound)
 				{
 					Edge edge = new Edge(p1, p3);
+					p1.connectedEdges.Add(edge);
+					p3.connectedEdges.Add(edge);
 					newEdges.Add(edge);
 					edges.Add(edge);
 				}
@@ -205,12 +177,16 @@ namespace AtomosZ.Voronoi
 					if (edge.Contains(p3))
 					{
 						edges.Add(edge);
+						edgeFound = true;
+						break;
 					}
 				}
 
 				if (!edgeFound)
 				{
 					Edge edge = new Edge(p2, p3);
+					p2.connectedEdges.Add(edge);
+					p3.connectedEdges.Add(edge);
 					newEdges.Add(edge);
 					edges.Add(edge);
 				}
