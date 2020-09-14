@@ -56,7 +56,7 @@ namespace AtomosZ.Voronoi
 					foreach (var edge in retri.connectedEdges)
 					{
 						if (needsRetriangulation.Contains(edge.start) && needsRetriangulation.Contains(edge.end))
-							edges.Remove(edge); // this still removes edges that should be removed
+							edges.Remove(edge); // this still removes edges that shouldn't be removed
 					}
 				}
 
