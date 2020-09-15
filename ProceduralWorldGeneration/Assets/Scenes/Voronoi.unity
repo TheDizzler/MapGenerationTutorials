@@ -302,9 +302,11 @@ MonoBehaviour:
   randomSeed: Seed
   mapWidth: 25
   mapHeight: 25
-  regionAmount: 5
+  regionAmount: 100
   minSqrDistanceBetweenSites: 0.5
-  viewDelaunayTriangulation: 0
+  viewDelaunayCircles: 0
+  viewDelaunayTriangles: 0
+  viewVoronoiPolygons: 1
 --- !u!1 &1585287478
 GameObject:
   m_ObjectHideFlags: 0

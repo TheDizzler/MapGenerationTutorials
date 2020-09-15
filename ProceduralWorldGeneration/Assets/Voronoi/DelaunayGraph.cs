@@ -9,27 +9,31 @@ namespace AtomosZ.Voronoi
 	public class DelaunayGraph
 	{
 		public List<DelaunayTriangle> triangles;
-		public List<Edge> edges;
-		public List<Site> centroids;
+		public List<DEdge> edges;
+		public List<Centroid> centroids;
 
 
 		public DelaunayGraph(List<Vector2> centroidPositions)
 		{
-			centroids = new List<Site>();
+			centroids = new List<Centroid>();
 			foreach (var pos in centroidPositions)
-				centroids.Add(new Site(pos));
-			DelaunayTriangulation();
+				centroids.Add(new Centroid(pos));
+
+			triangles = new List<DelaunayTriangle>();
+			edges = new List<DEdge>();
+
+			CalculateTriangulations(centroids);
 		}
 
 		public void AddSite(Vector2 sitePosition)
 		{
-			Site site = new Site(sitePosition);
+			Centroid site = new Centroid(sitePosition);
 			centroids.Add(site);
 			List<DelaunayTriangle> remove = new List<DelaunayTriangle>();
-			List<Site> needsRetriangulation = new List<Site>();
+			List<Centroid> needsRetriangulation = new List<Centroid>();
 			foreach (var triangle in triangles)
 			{
-				if ((site.position - triangle.center).sqrMagnitude <= triangle.radiusSqr)
+				if ((site.position - triangle.center.position).sqrMagnitude <= triangle.radiusSqr)
 				{
 					// this triangle is invalid
 					remove.Add(triangle);
@@ -71,25 +75,18 @@ namespace AtomosZ.Voronoi
 			CalculateTriangulations(needsRetriangulation);
 		}
 
-		private void DelaunayTriangulation()
-		{
-			triangles = new List<DelaunayTriangle>();
-			edges = new List<Edge>();
 
-			CalculateTriangulations(centroids);
-		}
-
-		private void CalculateTriangulations(List<Site> sites)
+		private void CalculateTriangulations(List<Centroid> sites)
 		{
 			for (int i = 0; i < sites.Count - 2; ++i)
 			{
-				Site p1 = sites[i];
+				Centroid p1 = sites[i];
 				for (int j = i + 1; j < sites.Count - 1; ++j)
 				{
-					Site p2 = sites[j];
+					Centroid p2 = sites[j];
 					for (int k = j + 1; k < sites.Count; ++k)
 					{
-						Site p3 = sites[k];
+						Centroid p3 = sites[k];
 						DelaunayTriangle circle = GetCircle(p1, p2, p3);
 
 						if (circle == null)
@@ -98,9 +95,10 @@ namespace AtomosZ.Voronoi
 						{
 							if (centroid == p1 || centroid == p2 || centroid == p3)
 								continue;
-							if ((centroid.position - circle.center).sqrMagnitude <= circle.radiusSqr)
+							if ((centroid.position - circle.center.position).sqrMagnitude <= circle.radiusSqr)
 							{
 								// this triangle is invalid
+								circle.Destroy();
 								circle = null;
 								break;
 							}
@@ -117,101 +115,9 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-		public class DelaunayTriangle
-		{
-			public Site p1, p2, p3;
-			public Vector2 center;
-			public float radius;
-			public float radiusSqr;
-			public List<Edge> edges;
 
 
-			public DelaunayTriangle(Site p1, Site p2, Site p3, Vector2 center, float radius)
-			{
-				this.p1 = p1;
-				this.p2 = p2;
-				this.p3 = p3;
-				this.center = center;
-				this.radius = radius;
-				radiusSqr = radius * radius;
-			}
-
-			/// <summary>
-			/// Returns any edges that have not been found yet.
-			/// </summary>
-			public List<Edge> CalculateEdges()
-			{
-				List<Edge> newEdges = new List<Edge>();
-				edges = new List<Edge>();
-				bool edgeFound = false;
-				foreach (var edge in p1.connectedEdges)
-				{
-					if (edge.Contains(p2))
-					{
-						edges.Add(edge);
-						edgeFound = true;
-						break;
-					}
-				}
-
-				if (!edgeFound)
-				{
-					Edge edge = new Edge(p1, p2);
-					p1.connectedEdges.Add(edge);
-					p2.connectedEdges.Add(edge);
-					newEdges.Add(edge);
-					edges.Add(edge);
-				}
-				else
-					edgeFound = false;
-
-				foreach (var edge in p1.connectedEdges)
-				{
-					if (edge.Contains(p3))
-					{
-						edges.Add(edge);
-						edgeFound = true;
-						break;
-					}
-				}
-
-				if (!edgeFound)
-				{
-					Edge edge = new Edge(p1, p3);
-					p1.connectedEdges.Add(edge);
-					p3.connectedEdges.Add(edge);
-					newEdges.Add(edge);
-					edges.Add(edge);
-				}
-				else
-					edgeFound = false;
-
-				foreach (var edge in p2.connectedEdges)
-				{
-					if (edge.Contains(p3))
-					{
-						edges.Add(edge);
-						edgeFound = true;
-						break;
-					}
-				}
-
-				if (!edgeFound)
-				{
-					Edge edge = new Edge(p2, p3);
-					p2.connectedEdges.Add(edge);
-					p3.connectedEdges.Add(edge);
-					newEdges.Add(edge);
-					edges.Add(edge);
-				}
-				else
-					edgeFound = false;
-
-				return newEdges;
-			}
-		}
-
-		private DelaunayTriangle GetCircle(Site site1, Site site2, Site site3)
+		private DelaunayTriangle GetCircle(Centroid site1, Centroid site2, Centroid site3)
 		{
 			Vector2 p1 = site1.position;
 			Vector2 p2 = site2.position;

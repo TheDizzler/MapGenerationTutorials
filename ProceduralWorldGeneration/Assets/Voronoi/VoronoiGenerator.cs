@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using AtomosZ.Voronoi;
-using UnityEditor;
 using UnityEngine;
 using Random = System.Random;
 
@@ -22,9 +21,12 @@ namespace AtomosZ.Tutorials.Voronoi
 		[Range(.1f, .75f)]
 		public float minSqrDistanceBetweenSites;
 
-		public bool viewDelaunayTriangulation = false;
+		public bool viewDelaunayCircles = false;
+		public bool viewDelaunayTriangles = true;
+		public bool viewVoronoiPolygons = true;
 
-		public DelaunayGraph graph;
+		public DelaunayGraph dGraph;
+		public VoronoiGraph vGraph;
 
 
 		public void GenerateMap()
@@ -47,30 +49,31 @@ namespace AtomosZ.Tutorials.Voronoi
 					sites.Add(site);
 			}
 
-			graph = new DelaunayGraph(sites);
-			Debug.Log(graph.triangles.Count + " triangles");
+			dGraph = new DelaunayGraph(sites);
+			Debug.Log(dGraph.triangles.Count + " triangles");
+			vGraph = new VoronoiGraph(dGraph);
 		}
 
 
 		public void AddPoint()
 		{
-			if (graph == null)
+			if (dGraph == null)
 			{
 				Debug.LogWarning("No graph to add points to");
 				return;
 			}
 
 			Vector2 site = new Vector2((float)(rng.NextDouble() * mapHeight), (float)(rng.NextDouble() * mapWidth));
-			while (IsTooNear(graph.centroids, site))
+			while (IsTooNear(dGraph.centroids, site))
 			{
 				site = new Vector2((float)(rng.NextDouble() * mapHeight), (float)(rng.NextDouble() * mapWidth));
 			}
 
-			graph.AddSite(site);
-			Debug.Log(graph.triangles.Count + " triangles");
+			dGraph.AddSite(site);
+			Debug.Log(dGraph.triangles.Count + " triangles");
 		}
 
-		private bool IsTooNear(List<Site> sites, Vector2 site)
+		private bool IsTooNear(List<Centroid> sites, Vector2 site)
 		{
 			for (int i = 0; i < sites.Count; ++i)
 			{
@@ -122,25 +125,35 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		private void OnDrawGizmos()
 		{
-			if (graph != null)
+			if (dGraph != null && viewDelaunayTriangles)
 			{
-				foreach (var triangle in graph.triangles)
+				foreach (var triangle in dGraph.triangles)
 				{
 					Gizmos.color = Color.green;
 					Gizmos.DrawLine(triangle.p1.position, triangle.p2.position);
 					Gizmos.DrawLine(triangle.p2.position, triangle.p3.position);
 					Gizmos.DrawLine(triangle.p3.position, triangle.p1.position);
 
-					if (viewDelaunayTriangulation)
+					if (viewDelaunayCircles)
 					{
 						Gizmos.color = Color.blue;
-						Gizmos.DrawWireSphere(triangle.center, triangle.radius);
+						Gizmos.DrawWireSphere(triangle.center.position, triangle.radius);
 					}
 				}
 
 				Gizmos.color = Color.white;
-				foreach (var centroid in graph.centroids)
+				foreach (var centroid in dGraph.centroids)
 					Gizmos.DrawCube(centroid.position, Vector3.one * .25f);
+			}
+
+			if (vGraph != null && viewVoronoiPolygons)
+			{
+				Gizmos.color = Color.gray;
+				foreach (var polygon in vGraph.polygons)
+				{
+					foreach (var corner in polygon.corners)
+						Gizmos.DrawCube(corner.position, Vector3.one * .25f);
+				}
 			}
 		}
 	}

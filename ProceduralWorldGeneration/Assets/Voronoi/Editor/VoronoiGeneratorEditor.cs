@@ -1,5 +1,4 @@
-﻿using AtomosZ.Voronoi;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 namespace AtomosZ.Tutorials.Voronoi.Editors
@@ -25,12 +24,38 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 		void OnSceneGUI()
 		{
 			VoronoiGenerator gen = (VoronoiGenerator)target;
-			Handles.color = Color.red;
-			if (gen.graph != null)
-				foreach (var edge in gen.graph.edges)
+
+			if (gen.dGraph != null && gen.viewDelaunayTriangles)
+			{
+				Handles.color = Color.red;
+				foreach (var edge in gen.dGraph.edges)
 				{
 					Handles.DrawDottedLine(edge.start.position, edge.end.position, 2);
 				}
+			}
+
+			if (gen.vGraph != null && gen.viewVoronoiPolygons)
+			{
+				Handles.color = Color.yellow;
+				foreach (var polygon in gen.vGraph.polygons)
+				{
+					foreach (var edge in polygon.voronoiEdges)
+						Handles.DrawDottedLine(edge.start.position, edge.end.position, 2);
+				}
+			}
+		}
+	}
+
+	[CustomEditor(typeof(VoronoiLibGenerator))]
+	public class VoronoiLibGeneratorEditor : Editor
+	{
+		public override void OnInspectorGUI()
+		{
+			VoronoiLibGenerator gen = (VoronoiLibGenerator)target;
+			if (GUILayout.Button("Generate Voronoi") || DrawDefaultInspector())
+			{
+				gen.GeneratePoints();
+			}
 		}
 	}
 }
