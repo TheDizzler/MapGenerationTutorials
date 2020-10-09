@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using AtomosZ.Voronoi;
+using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 using Random = System.Random;
 
@@ -9,6 +10,9 @@ namespace AtomosZ.Tutorials.Voronoi
 	public class VoronoiGenerator : MonoBehaviour
 	{
 		public static Random rng;
+		public static RectInt mapBounds;
+		public static HashSet<Corner> uniqueCorners;
+		public static int cornerCount = 0;
 
 		public bool useSeed = true;
 		public string randomSeed = "Seed";
@@ -16,7 +20,7 @@ namespace AtomosZ.Tutorials.Voronoi
 		public int mapWidth = 512;
 		[Range(1, 1024)]
 		public int mapHeight = 512;
-		[Range(1, 256)]
+		[Range(0, 256)]
 		public int regionAmount = 50;
 		[Range(.1f, .75f)]
 		public float minSqrDistanceBetweenSites;
@@ -27,6 +31,9 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		public DelaunayGraph dGraph;
 		public VoronoiGraph vGraph;
+		public GameObject regionPrefab;
+		public Transform regionHolder;
+		public List<Region> regions;
 
 
 		public void GenerateMap()
@@ -36,13 +43,33 @@ namespace AtomosZ.Tutorials.Voronoi
 			else
 				rng = new Random();
 
+			mapBounds = new RectInt(0, 0, mapWidth, mapHeight);
+			uniqueCorners = new HashSet<Corner>();
+			cornerCount = 0;
+
 			List<Vector2> sites = new List<Vector2>();
+			// create corner sites
+			sites.Add(new Vector2(mapBounds.xMin, mapBounds.yMin));
+			sites.Add(new Vector2(mapBounds.xMax, mapBounds.yMin));
+			sites.Add(new Vector2(mapBounds.xMax, mapBounds.yMax));
+			sites.Add(new Vector2(mapBounds.xMin, mapBounds.yMax));
+
+			int retryAttempts = 0;
 			for (int i = 0; i < regionAmount; i++)
 			{
 				Vector2 site = new Vector2((float)(rng.NextDouble() * mapHeight), (float)(rng.NextDouble() * mapWidth));
 				if (IsTooNear(sites, site))
-				{
-					--i; // try again
+				{   // try again
+
+					++retryAttempts;
+					if (retryAttempts > 25)
+					{
+						Debug.Log("Unable to place new site within exceptable distance parameters."
+							+ " Aborting creating new sites. Created " + i + " out of " + regionAmount);
+						break;
+					}
+
+					--i;
 					Debug.Log("retry");
 				}
 				else
@@ -50,8 +77,9 @@ namespace AtomosZ.Tutorials.Voronoi
 			}
 
 			dGraph = new DelaunayGraph(sites);
-			Debug.Log(dGraph.triangles.Count + " triangles");
 			vGraph = new VoronoiGraph(dGraph);
+
+			CreateRegions();
 		}
 
 
@@ -71,6 +99,23 @@ namespace AtomosZ.Tutorials.Voronoi
 
 			dGraph.AddSite(site);
 			Debug.Log(dGraph.triangles.Count + " triangles");
+		}
+
+
+		private void CreateRegions()
+		{
+			if (regions != null)
+				foreach (var region in regions)
+					DestroyImmediate(region.gameObject);
+
+			regions = new List<Region>();
+
+			foreach (var polygon in vGraph.polygons)
+			{
+				GameObject region = Instantiate(regionPrefab, regionHolder);
+				regions.Add(region.GetComponent<Region>());
+				region.GetComponent<Region>().CreateRegion(polygon);
+			}
 		}
 
 		private bool IsTooNear(List<Centroid> sites, Vector2 site)
@@ -143,18 +188,23 @@ namespace AtomosZ.Tutorials.Voronoi
 
 				Gizmos.color = Color.white;
 				foreach (var centroid in dGraph.centroids)
-					Gizmos.DrawCube(centroid.position, Vector3.one * .25f);
+					Gizmos.DrawCube(centroid.position, Vector3.one * .125f);
 			}
 
 			if (vGraph != null && viewVoronoiPolygons)
 			{
-				Gizmos.color = Color.gray;
-				foreach (var polygon in vGraph.polygons)
-				{
-					foreach (var corner in polygon.corners)
-						Gizmos.DrawCube(corner.position, Vector3.one * .25f);
-				}
+				// draw polygon corners
+				Gizmos.color = Color.white;
+				foreach (var corner in uniqueCorners)
+					Gizmos.DrawSphere(corner.position, .125f);
 			}
+
+			// draw map bounds
+			Gizmos.color = Color.black;
+			Gizmos.DrawLine(new Vector2(mapBounds.xMin, mapBounds.yMin), new Vector2(mapBounds.xMin, mapBounds.yMax));
+			Gizmos.DrawLine(new Vector2(mapBounds.xMin, mapBounds.yMax), new Vector2(mapBounds.xMax, mapBounds.yMax));
+			Gizmos.DrawLine(new Vector2(mapBounds.xMax, mapBounds.yMax), new Vector2(mapBounds.xMax, mapBounds.yMin));
+			Gizmos.DrawLine(new Vector2(mapBounds.xMax, mapBounds.yMin), new Vector2(mapBounds.xMin, mapBounds.yMin));
 		}
 	}
 }

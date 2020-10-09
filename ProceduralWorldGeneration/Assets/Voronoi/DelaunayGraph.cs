@@ -25,6 +25,10 @@ namespace AtomosZ.Voronoi
 			CalculateTriangulations(centroids);
 		}
 
+		/// <summary>
+		/// TODO: edges are not being added properly.
+		/// </summary>
+		/// <param name="sitePosition"></param>
 		public void AddSite(Vector2 sitePosition)
 		{
 			Centroid site = new Centroid(sitePosition);
@@ -33,7 +37,7 @@ namespace AtomosZ.Voronoi
 			List<Centroid> needsRetriangulation = new List<Centroid>();
 			foreach (var triangle in triangles)
 			{
-				if ((site.position - triangle.center.position).sqrMagnitude <= triangle.radiusSqr)
+				if ((site.position - triangle.realCenter).sqrMagnitude <= triangle.radiusSqr)
 				{
 					// this triangle is invalid
 					remove.Add(triangle);
@@ -95,7 +99,7 @@ namespace AtomosZ.Voronoi
 						{
 							if (centroid == p1 || centroid == p2 || centroid == p3)
 								continue;
-							if ((centroid.position - circle.center.position).sqrMagnitude <= circle.radiusSqr)
+							if ((centroid.position - circle.realCenter).sqrMagnitude <= circle.radiusSqr)
 							{
 								// this triangle is invalid
 								circle.Destroy();

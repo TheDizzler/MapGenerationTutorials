@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using AtomosZ.Tutorials.Voronoi;
 using UnityEngine;
 
 
@@ -6,6 +7,7 @@ namespace AtomosZ.Voronoi
 {
 	public class Polygon
 	{
+		public string name = "";
 		public Color color;
 
 		public Centroid centroid;
@@ -19,13 +21,15 @@ namespace AtomosZ.Voronoi
 		public Polygon(Centroid centroidSite)
 		{
 			centroid = centroidSite;
-			//List<DelaunayTriangle> checkedTriangles = new List<DelaunayTriangle>();
+
 			foreach (var dTriangle in centroid.dTriangles)
 			{
 				var corner = dTriangle.center;
 				corner.polygons.Add(this);
 				corners.Add(corner);
-
+				name += corner.num;
+				if (!VoronoiGenerator.uniqueCorners.Add(corner))
+					Debug.Log("Non-unique corner: " + corner.num);
 
 				foreach (var tri in centroid.dTriangles)
 				{
@@ -43,117 +47,21 @@ namespace AtomosZ.Voronoi
 					}
 				}
 			}
-
-			foreach (var corner in corners)
-			{
-
-			}
-		}
-	}
-
-	/// <summary>
-	/// aka a DSite, the point that a polygon is spawned around.
-	/// </summary>
-	public class Centroid : Site
-	{
-		public List<DEdge> connectedEdges = new List<DEdge>();
-		public List<DelaunayTriangle> dTriangles = new List<DelaunayTriangle>();
-
-		public Centroid(Vector2 pos) : base(pos) { }
-	}
-
-	/// <summary>
-	/// aka a VSite, a point that is a corner of a polygon.
-	/// </summary>
-	public class Corner : Site
-	{
-		public List<VEdge> connectedEdges = new List<VEdge>();
-		/// <summary>
-		/// List of polygons that this contains this corner.
-		/// </summary>
-		public List<Polygon> polygons = new List<Polygon>();
-
-
-		public Corner(Vector2 pos) : base(pos) { }
-
-		/// <summary>
-		/// Check if a VEdge already exists between the two corners.
-		/// Returns the edge if already exists and creates it if it doesn't.
-		/// </summary>
-		/// <param name="other"></param>
-		/// <param name="sharedEdge"></param>
-		/// <returns></returns>
-		public bool TryGetEdgeWith(Corner other, out VEdge sharedEdge)
-		{
-			foreach (VEdge edge in connectedEdges)
-			{
-				if (other.connectedEdges.Contains(edge))
-				{
-					sharedEdge = edge;
-					return true;
-				}
-			}
-
-			sharedEdge = new VEdge(this, other);
-
-			return false;
-		}
-	}
-
-	public abstract class Site
-	{
-		public Vector2 position;
-
-
-		public Site(Vector2 pos)
-		{
-			position = pos;
 		}
 	}
 
 
-	public class VEdge : Edge<Corner>
-	{
-		public VEdge(Corner p1, Corner p2) : base(p1, p2)
-		{
-			p1.connectedEdges.Add(this);
-			p2.connectedEdges.Add(this);
-		}
-	}
 
-	public class DEdge : Edge<Centroid>
-	{
-		public DEdge(Centroid p1, Centroid p2) : base(p1, p2)
-		{
-			p1.connectedEdges.Add(this);
-			p2.connectedEdges.Add(this);
-		}
-	}
-
-	/// <summary>
-	/// A line that connects to sites.
-	/// </summary>
-	public abstract class Edge<TSite> where TSite : Site
-	{
-		public TSite start, end;
-
-
-		public Edge(TSite p1, TSite p2)
-		{
-			start = p1;
-			end = p2;
-		}
-
-		public bool Contains(TSite p2)
-		{
-			return start == p2 || end == p2;
-		}
-	}
 
 	public class DelaunayTriangle
 	{
 		public Centroid p1, p2, p3;
-		public Corner center; // can't construct corners here as they are shared between triangles.
+		public Corner center;
+		/// <summary>
+		/// Because the corners may be outside the map extremities, the actual triangle center
+		/// may not be the same.
+		/// </summary>
+		public Vector2 realCenter;
 		public float radius;
 		public float radiusSqr;
 		public List<DEdge> edges;
@@ -167,7 +75,8 @@ namespace AtomosZ.Voronoi
 			p1.dTriangles.Add(this);
 			p2.dTriangles.Add(this);
 			p3.dTriangles.Add(this);
-			this.center = new Corner(center);
+			this.center = new Corner(center, VoronoiGenerator.cornerCount++);
+			realCenter = center;
 			this.radius = radius;
 			radiusSqr = radius * radius;
 		}
@@ -178,6 +87,7 @@ namespace AtomosZ.Voronoi
 			p1.dTriangles.Remove(this);
 			p2.dTriangles.Remove(this);
 			p3.dTriangles.Remove(this);
+			--VoronoiGenerator.cornerCount;
 		}
 
 		/// <summary>
