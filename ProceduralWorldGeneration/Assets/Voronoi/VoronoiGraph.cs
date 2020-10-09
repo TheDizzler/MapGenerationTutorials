@@ -11,11 +11,9 @@ namespace AtomosZ.Voronoi
 		public VoronoiGraph(DelaunayGraph dGraph)
 		{
 			polygons = new List<Polygon>();
-			foreach (var centroid in dGraph.centroids)
+			for (int i = 4; i < dGraph.centroids.Count; ++i) // first 4 centroids are map corners
 			{
-				if (centroid.dTriangles.Count == 2) // check if a proper centroid and not a map corner
-					continue;
-				Polygon poly = new Polygon(centroid);
+				Polygon poly = new Polygon(dGraph.centroids[i]);
 				polygons.Add(poly);
 			}
 		}
