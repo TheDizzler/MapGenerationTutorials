@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using AtomosZ.Tutorials.Voronoi;
 using UnityEngine;
 
 
@@ -24,12 +23,10 @@ namespace AtomosZ.Voronoi
 
 			foreach (var dTriangle in centroid.dTriangles)
 			{
-				var corner = dTriangle.center;
+				var corner = dTriangle.GetCorner();
 				corner.polygons.Add(this);
 				corners.Add(corner);
 				name += corner.num;
-				if (!VoronoiGenerator.uniqueCorners.Add(corner))
-					Debug.Log("Non-unique corner: " + corner.num);
 
 				foreach (var tri in centroid.dTriangles)
 				{
@@ -38,7 +35,7 @@ namespace AtomosZ.Voronoi
 
 					if (dTriangle.SharesEdgeWith(tri))
 					{
-						if (!corner.TryGetEdgeWith(tri.center, out VEdge vEdge))
+						if (!corner.TryGetEdgeWith(tri.GetCorner(), out VEdge vEdge))
 						{ // a new edge was created
 							voronoiEdges.Add(vEdge);
 						}
@@ -56,7 +53,6 @@ namespace AtomosZ.Voronoi
 	public class DelaunayTriangle
 	{
 		public Centroid p1, p2, p3;
-		public Corner center;
 		/// <summary>
 		/// Because the corners may be outside the map extremities, the actual triangle center
 		/// may not be the same.
@@ -65,6 +61,8 @@ namespace AtomosZ.Voronoi
 		public float radius;
 		public float radiusSqr;
 		public List<DEdge> edges;
+
+		private Corner corner;
 
 
 		public DelaunayTriangle(Centroid p1, Centroid p2, Centroid p3, Vector2 center, float radius)
@@ -75,19 +73,36 @@ namespace AtomosZ.Voronoi
 			p1.dTriangles.Add(this);
 			p2.dTriangles.Add(this);
 			p3.dTriangles.Add(this);
-			this.center = new Corner(center, VoronoiGenerator.cornerCount++);
+
 			realCenter = center;
 			this.radius = radius;
 			radiusSqr = radius * radius;
 		}
 
+		/// <summary>
+		/// Gets corner. Creates if doesn't already exist.
+		/// </summary>
+		/// <returns></returns>
+		public Corner GetCorner()
+		{
+			if (corner == null)
+			{
+				corner = new Corner(realCenter, VoronoiGraph.cornerCount++);
+				if (!VoronoiGraph.uniqueCorners.Add(corner))
+				{
+					// this will do nothing. What we need to do is check the position. However, triangles SHOULD all unique anyway.
+					//Debug.Log("Non-unique corner: " + this.center.num);
+				}
+			}
+
+			return corner;
+		}
 
 		public void Destroy()
 		{
 			p1.dTriangles.Remove(this);
 			p2.dTriangles.Remove(this);
 			p3.dTriangles.Remove(this);
-			--VoronoiGenerator.cornerCount;
 		}
 
 		/// <summary>
