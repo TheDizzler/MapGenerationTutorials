@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using AtomosZ.Voronoi;
+using UnityEditor;
 using UnityEngine;
 
 namespace AtomosZ.Tutorials.Voronoi.Editors

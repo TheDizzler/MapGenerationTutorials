@@ -25,6 +25,7 @@ namespace AtomosZ.Voronoi
 			CalculateTriangulations(centroids);
 		}
 
+
 		/// <summary>
 		/// TODO: edges are not being added properly.
 		/// </summary>
@@ -118,7 +119,6 @@ namespace AtomosZ.Voronoi
 				}
 			}
 		}
-
 
 
 		private DelaunayTriangle GetCircle(Centroid site1, Centroid site2, Centroid site3)

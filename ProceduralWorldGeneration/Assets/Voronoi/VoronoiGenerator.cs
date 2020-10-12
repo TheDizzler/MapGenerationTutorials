@@ -10,10 +10,11 @@ namespace AtomosZ.Tutorials.Voronoi
 	public class VoronoiGenerator : MonoBehaviour
 	{
 		public static Random rng;
-		public static RectInt mapBounds;
-		public static HashSet<Corner> uniqueCorners;
-		public static int cornerCount = 0;
-
+		public static Rect mapBounds;
+		private Vector2 topLeft;
+		private Vector2 topRight;
+		private Vector2 bottomRight;
+		private Vector2 bottomLeft;
 		public bool useSeed = true;
 		public string randomSeed = "Seed";
 		[Range(1, 1024)]
@@ -43,16 +44,19 @@ namespace AtomosZ.Tutorials.Voronoi
 			else
 				rng = new Random();
 
-			mapBounds = new RectInt(0, 0, mapWidth, mapHeight);
-			uniqueCorners = new HashSet<Corner>();
-			cornerCount = 0;
+			mapBounds = new Rect(0, 0, mapWidth, mapHeight);
 
+			topLeft = new Vector2(mapBounds.xMin, mapBounds.yMax);
+			topRight = new Vector2(mapBounds.xMax, mapBounds.yMax);
+			bottomRight = new Vector2(mapBounds.xMax, mapBounds.yMin);
+			bottomLeft = new Vector2(mapBounds.xMin, mapBounds.yMin);
 			List<Vector2> sites = new List<Vector2>();
 			// create corner sites
-			sites.Add(new Vector2(mapBounds.xMin, mapBounds.yMin));
-			sites.Add(new Vector2(mapBounds.xMax, mapBounds.yMin));
-			sites.Add(new Vector2(mapBounds.xMax, mapBounds.yMax));
-			sites.Add(new Vector2(mapBounds.xMin, mapBounds.yMax));
+
+			sites.Add(topLeft);
+			sites.Add(topRight);
+			sites.Add(bottomRight);
+			sites.Add(bottomLeft);
 
 			int retryAttempts = 0;
 			for (int i = 0; i < regionAmount; i++)
@@ -70,7 +74,6 @@ namespace AtomosZ.Tutorials.Voronoi
 					}
 
 					--i;
-					Debug.Log("retry");
 				}
 				else
 					sites.Add(site);
@@ -99,6 +102,71 @@ namespace AtomosZ.Tutorials.Voronoi
 
 			dGraph.AddSite(site);
 			Debug.Log(dGraph.triangles.Count + " triangles");
+		}
+
+
+		public List<Vector2> FindMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd)
+		{
+			List<Vector2> intersections = new List<Vector2>();
+			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 leftSide))
+				intersections.Add(leftSide);
+			if (TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out Vector2 topSide))
+				intersections.Add(topSide);
+			if (TryGetLineIntersection(bottomRight, topRight, lineStart, lineEnd, out Vector2 rightSide))
+				intersections.Add(rightSide);
+			if (TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out Vector2 bottomSide))
+				intersections.Add(bottomSide);
+			return intersections;
+		}
+
+
+		/// <summary>
+		/// Algo modified from http://csharphelper.com/blog/2014/08/determine-where-two-lines-intersect-in-c/.
+		/// </summary>
+		/// <param name="p1"></param>
+		/// <param name="p2"></param>
+		/// <param name="p3"></param>
+		/// <param name="p4"></param>
+		/// <param name="intersectPoint"></param>
+		/// <returns></returns>
+		private bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
+		{
+			// Get the segments' parameters.
+			float dx12 = p1.x - p2.x;
+			float dy12 = p1.y - p2.y;
+			float dx34 = p4.x - p3.x;
+			float dy34 = p4.y - p3.y;
+
+			float denominator = (dy12 * dx34 - dx12 * dy34);
+			float t1 = ((p1.x - p3.x) * dy34 + (p3.y - p1.y) * dx34) / denominator;
+
+			if (float.IsInfinity(t1))
+			{
+				// The lines are parallel (or close enough to it).
+				intersectPoint = Vector2.positiveInfinity;
+				return false;
+			}
+
+			float t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12) / -denominator;
+
+
+			if ((t2 >= 0) && (t2 <= 1))
+			{
+				// Find the point of intersection.
+				intersectPoint = new Vector2(p1.x + dx12 * t1, p1.y + dy12 * t1); // this is intersect point on line 1
+				return true;
+			}
+
+			// if (t1 >= 0) && (t1 <= 1)))
+			//{ // this is intersect point on line 2.
+			//	// The result is the same Vector as line 1 but the value of t2 may be useful in the future.
+			//	intersectPoint = new Vector2(p3.x + dx34 * t2, p3.y + dy34 * t2); 
+			//	return true;
+			//}
+
+			// segments do not intersect
+			intersectPoint = Vector2.positiveInfinity;
+			return false;
 		}
 
 
@@ -182,7 +250,7 @@ namespace AtomosZ.Tutorials.Voronoi
 					if (viewDelaunayCircles)
 					{
 						Gizmos.color = Color.blue;
-						Gizmos.DrawWireSphere(triangle.center.position, triangle.radius);
+						Gizmos.DrawWireSphere(triangle.realCenter, triangle.radius);
 					}
 				}
 
@@ -194,17 +262,16 @@ namespace AtomosZ.Tutorials.Voronoi
 			if (vGraph != null && viewVoronoiPolygons)
 			{
 				// draw polygon corners
-				Gizmos.color = Color.white;
-				foreach (var corner in uniqueCorners)
-					Gizmos.DrawSphere(corner.position, .125f);
+
 			}
 
 			// draw map bounds
 			Gizmos.color = Color.black;
-			Gizmos.DrawLine(new Vector2(mapBounds.xMin, mapBounds.yMin), new Vector2(mapBounds.xMin, mapBounds.yMax));
-			Gizmos.DrawLine(new Vector2(mapBounds.xMin, mapBounds.yMax), new Vector2(mapBounds.xMax, mapBounds.yMax));
-			Gizmos.DrawLine(new Vector2(mapBounds.xMax, mapBounds.yMax), new Vector2(mapBounds.xMax, mapBounds.yMin));
-			Gizmos.DrawLine(new Vector2(mapBounds.xMax, mapBounds.yMin), new Vector2(mapBounds.xMin, mapBounds.yMin));
+			Gizmos.DrawLine(topLeft, topRight);
+			Gizmos.DrawLine(topRight, bottomRight);
+			Gizmos.DrawLine(bottomRight, bottomLeft);
+			Gizmos.DrawLine(bottomLeft, topLeft);
+
 		}
 	}
 }
