@@ -9,25 +9,42 @@ namespace AtomosZ.Tutorials.Voronoi
 {
 	public class VoronoiGenerator : MonoBehaviour
 	{
+		public const byte TopRight = 3;
+		public const byte BottomRight = 6;
+		public const byte TopLeft = 9;
+		public const byte BottomLeft = 12;
+
+		public enum MapSide
+		{
+			Inside = 0, // 0000
+			Top = 1,    // 0001
+			Right = 2,  // 0010
+			Bottom = 4, // 0100
+			Left = 8    // 1000
+		};
+
 		public static Random rng;
 		public static Rect mapBounds;
-		private Vector2 topLeft;
-		private Vector2 topRight;
-		private Vector2 bottomRight;
-		private Vector2 bottomLeft;
-		public bool useSeed = true;
+		public static bool fixCorners;
+
+		private static float mapBoundsTolerance = .0001f;
+
+
+		public bool useRandomSeed = true;
 		public string randomSeed = "Seed";
+
 		[Range(1, 1024)]
 		public int mapWidth = 512;
 		[Range(1, 1024)]
 		public int mapHeight = 512;
 		[Range(0, 256)]
 		public int regionAmount = 50;
-		[Range(.1f, .75f)]
+		[Range(.5f, 5.00f)]
 		public float minSqrDistanceBetweenSites;
 
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
+		public bool viewCenteroids = true;
 		public bool viewVoronoiPolygons = true;
 
 		public DelaunayGraph dGraph;
@@ -36,13 +53,20 @@ namespace AtomosZ.Tutorials.Voronoi
 		public Transform regionHolder;
 		public List<Region> regions;
 
+		public bool fixOOBCorners = false;
+
+		private static Vector2 topLeft;
+		private static Vector2 topRight;
+		private static Vector2 bottomRight;
+		private static Vector2 bottomLeft;
+
 
 		public void GenerateMap()
 		{
-			if (useSeed)
-				rng = new Random(randomSeed.GetHashCode());
-			else
-				rng = new Random();
+			fixCorners = fixOOBCorners;
+			if (useRandomSeed)
+				randomSeed = System.DateTime.Now.Ticks.ToString();
+			rng = new Random(randomSeed.GetHashCode());
 
 			mapBounds = new Rect(0, 0, mapWidth, mapHeight);
 
@@ -104,8 +128,23 @@ namespace AtomosZ.Tutorials.Voronoi
 			Debug.Log(dGraph.triangles.Count + " triangles");
 		}
 
+		
+		public static bool IsInMapBounds(Vector2 position)
+		{
+			if (mapBounds.Contains(position))
+				return true; // no argument that it is within bounds
 
-		public List<Vector2> FindMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd)
+			// check if close enough
+			if (position.x + mapBoundsTolerance > mapBounds.xMin
+				&& position.y + mapBoundsTolerance > mapBounds.yMin
+				&& position.x - mapBoundsTolerance < mapBounds.xMax
+				&& position.y - mapBoundsTolerance < mapBounds.yMax)
+				return true;
+
+			return false;
+		}
+
+		public static List<Vector2> FindMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd)
 		{
 			List<Vector2> intersections = new List<Vector2>();
 			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 leftSide))
@@ -119,6 +158,52 @@ namespace AtomosZ.Tutorials.Voronoi
 			return intersections;
 		}
 
+		public static bool TryGetFirstMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd, out Vector2 intersectPoint)
+		{
+			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out intersectPoint))
+				return true;
+			if (TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out intersectPoint))
+				return true;
+			if (TryGetLineIntersection(bottomRight, topRight, lineStart, lineEnd, out intersectPoint))
+				return true;
+			if (TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out intersectPoint))
+				return true;
+			return false;
+		}
+
+
+		public static bool TryGetBoundsIntersection(Vector2 lineStart, Vector2 lineEnd, out Dictionary<MapSide, Vector2> intersections, out byte corner)
+		{
+			intersections = new Dictionary<MapSide, Vector2>();
+			corner = (int)MapSide.Inside;
+
+			if (TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out Vector2 top))
+			{
+				intersections.Add(MapSide.Top, top);
+				corner |= (int)MapSide.Top;
+			}
+
+			if (TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out Vector2 bottom))
+			{
+				intersections.Add(MapSide.Bottom, bottom);
+				corner |= (int)MapSide.Bottom;
+			}
+
+			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 left))
+			{
+				intersections.Add(MapSide.Left, left);
+				corner |= (int)MapSide.Left;
+			}
+
+			if (TryGetLineIntersection(bottomRight, topRight, lineStart, lineEnd, out Vector2 right))
+			{
+				intersections.Add(MapSide.Right, right);
+				corner |= (int)MapSide.Right;
+			}
+
+			return intersections.Count > 0;
+		}
+
 
 		/// <summary>
 		/// Algo modified from http://csharphelper.com/blog/2014/08/determine-where-two-lines-intersect-in-c/.
@@ -129,7 +214,7 @@ namespace AtomosZ.Tutorials.Voronoi
 		/// <param name="p4"></param>
 		/// <param name="intersectPoint"></param>
 		/// <returns></returns>
-		private bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
+		private static bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
 		{
 			// Get the segments' parameters.
 			float dx12 = p1.x - p2.x;
@@ -150,14 +235,14 @@ namespace AtomosZ.Tutorials.Voronoi
 			float t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12) / -denominator;
 
 
-			if ((t2 >= 0) && (t2 <= 1))
+			if ((t2 > 0) && (t2 < 1))
 			{
 				// Find the point of intersection.
 				intersectPoint = new Vector2(p1.x + dx12 * t1, p1.y + dy12 * t1); // this is intersect point on line 1
 				return true;
 			}
 
-			// if (t1 >= 0) && (t1 <= 1)))
+			// if (t1 > 0) && (t1 < 1)))
 			//{ // this is intersect point on line 2.
 			//	// The result is the same Vector as line 1 but the value of t2 may be useful in the future.
 			//	intersectPoint = new Vector2(p3.x + dx34 * t2, p3.y + dy34 * t2); 
@@ -238,25 +323,41 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		private void OnDrawGizmos()
 		{
-			if (dGraph != null && viewDelaunayTriangles)
+			if (dGraph != null)
 			{
-				foreach (var triangle in dGraph.triangles)
+				if (viewDelaunayTriangles)
 				{
-					Gizmos.color = Color.green;
-					Gizmos.DrawLine(triangle.p1.position, triangle.p2.position);
-					Gizmos.DrawLine(triangle.p2.position, triangle.p3.position);
-					Gizmos.DrawLine(triangle.p3.position, triangle.p1.position);
+					foreach (var triangle in dGraph.triangles)
+					{
+						if (triangle.isInvalidated)
+							continue;
+						Gizmos.color = Color.green;
+						Gizmos.DrawLine(triangle.p1.position, triangle.p2.position);
+						Gizmos.DrawLine(triangle.p2.position, triangle.p3.position);
+						Gizmos.DrawLine(triangle.p3.position, triangle.p1.position);
 
-					if (viewDelaunayCircles)
+						if (viewDelaunayCircles)
+						{
+							Gizmos.color = Color.blue;
+							Gizmos.DrawWireSphere(triangle.realCenter, triangle.radius);
+						}
+					}
+				}
+				else if (viewDelaunayCircles)
+				{
+					foreach (var triangle in dGraph.triangles)
 					{
 						Gizmos.color = Color.blue;
 						Gizmos.DrawWireSphere(triangle.realCenter, triangle.radius);
 					}
 				}
 
-				Gizmos.color = Color.white;
-				foreach (var centroid in dGraph.centroids)
-					Gizmos.DrawCube(centroid.position, Vector3.one * .125f);
+				if (viewCenteroids)
+				{
+					Gizmos.color = Color.white;
+					foreach (var centroid in dGraph.centroids)
+						Gizmos.DrawSphere(centroid.position, .25f);
+				}
 			}
 
 			if (vGraph != null && viewVoronoiPolygons)

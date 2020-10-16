@@ -41,16 +41,16 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 				foreach (var edge in VoronoiGraph.uniqueVEdges)
 				{
-					if (VoronoiGenerator.mapBounds.Contains(edge.start.position)
-						&& VoronoiGenerator.mapBounds.Contains(edge.end.position))
+					if (VoronoiGenerator.IsInMapBounds(edge.start.position)
+						&& VoronoiGenerator.IsInMapBounds(edge.end.position))
 					{
 						Handles.color = Color.blue;
 					}
-					else if (VoronoiGenerator.mapBounds.Contains(edge.start.position)
-						|| VoronoiGenerator.mapBounds.Contains(edge.end.position))
+					else if (VoronoiGenerator.IsInMapBounds(edge.start.position)
+						|| VoronoiGenerator.IsInMapBounds(edge.end.position))
 					{
 						Handles.color = Color.yellow;
-						foreach (var intersection in gen.FindMapBoundsIntersection(edge.start.position, edge.end.position))
+						foreach (var intersection in VoronoiGenerator.FindMapBoundsIntersection(edge.start.position, edge.end.position))
 						{
 							Handles.CylinderHandleCap(0, intersection, Quaternion.identity, .5f, EventType.Repaint);
 						}
@@ -61,7 +61,7 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 					{
 						++OOB;
 						Handles.color = Color.red;
-						foreach (var intersection in gen.FindMapBoundsIntersection(edge.start.position, edge.end.position))
+						foreach (var intersection in VoronoiGenerator.FindMapBoundsIntersection(edge.start.position, edge.end.position))
 						{
 							Handles.CylinderHandleCap(0, intersection, Quaternion.identity, .5f, EventType.Repaint);
 						}
@@ -74,7 +74,7 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 				foreach (var corner in VoronoiGraph.uniqueCorners)
 				{
-					if (VoronoiGenerator.mapBounds.Contains(corner.position))
+					if (VoronoiGenerator.IsInMapBounds(corner.position))
 						Handles.color = Color.white;
 					else
 						Handles.color = Color.red;
