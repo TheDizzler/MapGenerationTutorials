@@ -9,10 +9,10 @@ namespace AtomosZ.Tutorials.Voronoi
 {
 	public class VoronoiGenerator : MonoBehaviour
 	{
-		public const byte TopRight = 3;
-		public const byte BottomRight = 6;
-		public const byte TopLeft = 9;
-		public const byte BottomLeft = 12;
+		public const byte TopRightCornerByte = 3;
+		public const byte BottomRightCornerByte = 6;
+		public const byte TopLeftCornerByte = 9;
+		public const byte BottomLeftCornerByte = 12;
 
 		public enum MapSide
 		{
@@ -24,11 +24,17 @@ namespace AtomosZ.Tutorials.Voronoi
 		};
 
 		public static Random rng;
-		public static Rect mapBounds;
+
 		public static bool fixCorners;
+		public static bool fixEdges;
 
-		private static float mapBoundsTolerance = .0001f;
+		public static Vector2 topLeft;
+		public static Vector2 topRight;
+		public static Vector2 bottomRight;
+		public static Vector2 bottomLeft;
 
+		private static Rect mapBounds;
+		private static float mapBoundsTolerance = .00001f;
 
 		public bool useRandomSeed = true;
 		public string randomSeed = "Seed";
@@ -54,16 +60,14 @@ namespace AtomosZ.Tutorials.Voronoi
 		public List<Region> regions;
 
 		public bool fixOOBCorners = false;
-
-		private static Vector2 topLeft;
-		private static Vector2 topRight;
-		private static Vector2 bottomRight;
-		private static Vector2 bottomLeft;
-
+		public bool fixOOBEdges = false;
+		
 
 		public void GenerateMap()
 		{
 			fixCorners = fixOOBCorners;
+			fixEdges = fixOOBEdges;
+
 			if (useRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();
 			rng = new Random(randomSeed.GetHashCode());
@@ -128,7 +132,7 @@ namespace AtomosZ.Tutorials.Voronoi
 			Debug.Log(dGraph.triangles.Count + " triangles");
 		}
 
-		
+
 		public static bool IsInMapBounds(Vector2 position)
 		{
 			if (mapBounds.Contains(position))
@@ -142,6 +146,182 @@ namespace AtomosZ.Tutorials.Voronoi
 				return true;
 
 			return false;
+		}
+
+		/// <summary>
+		/// Finds corner case where a polygon is in a corner but doesn't contain that corner.
+		/// INCOMPLETE.
+		/// </summary>
+		/// <param name="polygon"></param>
+		/// <param name="cuttingCorners"></param>
+		/// <param name="cornerCut"></param>
+		/// <returns></returns>
+		public static bool TryGetCornerIntersections(Polygon polygon, out VEdge cornerCuttingEdge, out byte cornerCut)
+		{
+			cornerCuttingEdge = null;
+			cornerCut = 0;
+
+			foreach (var corner in polygon.corners)
+			{
+				// if a connected edge thats in this polygon intersects border and a connected edge NOT in this polygon intersectes a DIFFERENT border
+				if (IsInMapBounds(corner.position))
+					continue; // ignore corners oob
+
+				List<VEdge> encasingEdges = new List<VEdge>();
+				List<MapSide> mapSidesCrossed = new List<MapSide>();
+				foreach (var edge in corner.connectedEdges)
+				{
+					if (!TryGetMapSideCross(edge.start.position, edge.end.position, out MapSide side))
+						continue; // edge does not cross map border
+
+					encasingEdges.Add(edge);
+					mapSidesCrossed.Add(side);
+				}
+
+				if (encasingEdges.Count >= 2)
+				{
+					MapSide side = mapSidesCrossed[0];
+					bool allSameSide = true;
+					for (int i = 1; i < mapSidesCrossed.Count; ++i)
+						if (mapSidesCrossed[i] != side)
+							allSameSide = false;
+					if (allSameSide)
+						continue; // uninteresting corner
+
+					// at this point we should have identified a corner that has atleast two edges that encase a map corner
+					// determine which edges are the corner enclosers
+					// by neccesity, corner encasing edges are only connected to one polygon
+					// which is not helpful if checking in the polygon creation phase
+					Debug.Log("Found corner!");
+				}
+			}
+
+
+			return false;
+		}
+
+		public static bool TryGetClosestCorner(VEdge edge, out byte cornerByte)
+		{
+			Vector2 lineStart = edge.start.position;
+			Vector2 lineEnd = edge.end.position;
+			cornerByte = TopRightCornerByte;
+
+			if (!TryGetFirstMapBoundsIntersection(lineStart, lineEnd, out Vector2 intersectPoint))
+			{
+				//errorEdge = edge;
+				return false;
+				throw new System.Exception("Edge does not cross a border! Corner? Pos: " + lineStart + ", " + lineEnd);
+				
+			}
+
+			float minDistance = Vector2.Distance(intersectPoint, topRight);
+			
+			float toTopLeft = Vector2.Distance(intersectPoint, topLeft);
+			if (toTopLeft < minDistance)
+			{
+				minDistance = toTopLeft;
+				cornerByte = TopLeftCornerByte;
+			}
+			float toBottomLeft = Vector2.Distance(intersectPoint, bottomLeft);
+			if (toBottomLeft < minDistance)
+			{
+				minDistance = toBottomLeft;
+				cornerByte = BottomLeftCornerByte;
+			}
+			float toBottomRight = Vector2.Distance(intersectPoint, bottomRight);
+			if (toBottomRight < minDistance)
+			{
+				minDistance = toBottomRight;
+				cornerByte = BottomRightCornerByte;
+			}
+
+			return true;
+		}
+
+		public static bool TryGetMapSideCross(Vector2 lineStart, Vector2 lineEnd, out MapSide mapSide)
+		{
+			mapSide = MapSide.Inside;
+			if (LineIntersectsMapSide(lineStart, lineEnd, MapSide.Top))
+			{
+				mapSide = MapSide.Top;
+				return true;
+			}
+
+			if (LineIntersectsMapSide(lineStart, lineEnd, MapSide.Right))
+			{
+				mapSide = MapSide.Right;
+				return true;
+			}
+			if (LineIntersectsMapSide(lineStart, lineEnd, MapSide.Left))
+			{
+				mapSide = MapSide.Left;
+				return true;
+			}
+			if (LineIntersectsMapSide(lineStart, lineEnd, MapSide.Bottom))
+			{
+				mapSide = MapSide.Bottom;
+				return true;
+			}
+
+			return false;
+		}
+
+		public static bool LineIntersectsMapSide(Vector2 lineStart, Vector2 lineEnd, MapSide mapSide)
+		{
+			switch (mapSide)
+			{
+				case MapSide.Top:
+					return TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out Vector2 top);
+				case MapSide.Right:
+					return TryGetLineIntersection(bottomRight, topRight, lineStart, lineEnd, out Vector2 right);
+				case MapSide.Bottom:
+					return TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out Vector2 bottom);
+				case MapSide.Left:
+					return TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 left);
+			}
+
+			return false;
+		}
+
+		public static bool TryGetBoundsIntersection(Polygon polygon, out Dictionary<VEdge, Vector2> intersections)
+		{
+			bool intersectionFound = false;
+			intersections = new Dictionary<VEdge, Vector2>();
+			foreach (var edge in polygon.voronoiEdges)
+			{
+				if (TryGetFirstMapBoundsIntersection(edge.start.position, edge.end.position, out Vector2 intersectPoint))
+				{
+					intersections.Add(edge, intersectPoint);
+					intersectionFound = true;
+				}
+			}
+
+			return intersectionFound;
+		}
+
+		/// <summary>
+		/// If any exist, returns a list of edge-bool pairs of oob edges and 
+		/// whether it's completely oob (true) or partially oob (false).
+		/// </summary>
+		/// <param name="polygon"></param>
+		/// <param name="dictionary"></param>
+		/// <returns></returns>
+		public static bool TryGetOOBEdges(Polygon polygon, out List<VEdge> completelyOOB, out List<VEdge> partialOOB)
+		{
+			completelyOOB = new List<VEdge>();
+			partialOOB = new List<VEdge>();
+
+			foreach (var edge in polygon.voronoiEdges)
+			{
+				bool startOOB = !IsInMapBounds(edge.start.position);
+				bool endOOB = !IsInMapBounds(edge.end.position);
+				if (startOOB && endOOB)
+					completelyOOB.Add(edge);
+				else if (startOOB || endOOB)
+					partialOOB.Add(edge);
+			}
+
+			return completelyOOB.Count > 0 || partialOOB.Count > 0;
 		}
 
 		public static List<Vector2> FindMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd)
@@ -235,7 +415,7 @@ namespace AtomosZ.Tutorials.Voronoi
 			float t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12) / -denominator;
 
 
-			if ((t2 > 0) && (t2 < 1))
+			if ((t2 > mapBoundsTolerance) && (t2 < 1 - mapBoundsTolerance))
 			{
 				// Find the point of intersection.
 				intersectPoint = new Vector2(p1.x + dx12 * t1, p1.y + dy12 * t1); // this is intersect point on line 1

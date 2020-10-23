@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using AtomosZ.Tutorials.Voronoi;
 using UnityEngine;
-
 
 namespace AtomosZ.Voronoi
 {
@@ -10,15 +10,15 @@ namespace AtomosZ.Voronoi
 	/// </summary>
 	public class Polygon
 	{
-		public string name = "";
-		public Color color;
-
 		public Centroid centroid;
 		public List<Corner> corners = new List<Corner>();
 		/// <summary>
 		/// Edges that seperate polygons
 		/// </summary>
 		public List<VEdge> voronoiEdges = new List<VEdge>();
+		public List<Corner> oobCorners = new List<Corner>();
+
+		public bool isInvalid = false;
 
 
 		public Polygon(Centroid centroidSite)
@@ -27,18 +27,39 @@ namespace AtomosZ.Voronoi
 
 			GetCornersAndEdges();
 			// check if edges have end points oob
-			if (VoronoiGenerator.fixCorners)
-				FixOoBCorners();
+			if (!isInvalid)
+			{
+				if (VoronoiGenerator.fixCorners)
+					FixOOBCorners();
+			}
+		}
+
+
+
+		public string GetName()
+		{
+			string name = "";
+			for (int i = 0; i < corners.Count; ++i)
+			{
+				name += corners[i].num;
+				if (i != corners.Count - 1)
+					name += "-";
+			}
+
+			return name;
 		}
 
 		private void GetCornersAndEdges()
 		{
 			foreach (var dTriangle in centroid.dTriangles)
 			{
+				if (dTriangle.isInvalidated)
+					continue;
 				var corner = dTriangle.GetCorner();
 				corner.polygons.Add(this);
 				corners.Add(corner);
-				name += corner.num;
+				if (corner.isOOB)
+					oobCorners.Add(corner);
 
 				foreach (var tri in centroid.dTriangles)
 				{
@@ -50,49 +71,41 @@ namespace AtomosZ.Voronoi
 						if (!corner.TryGetEdgeWith(tri.GetCorner(), out VEdge vEdge))
 						{ // a new edge was created
 							voronoiEdges.Add(vEdge);
+							vEdge.polygons.Add(this);
 						}
 						else if (!voronoiEdges.Contains(vEdge))
+						{
 							voronoiEdges.Add(vEdge);
+							vEdge.polygons.Add(this);
+						}
+
 					}
 				}
 			}
 
 			if (voronoiEdges.Count < 3)
-				Debug.Log("Invalid Polygon - destroy");
+			{
+				Invalidate();
+			}
 		}
 
-		private void FixOoBCorners()
+		private void FixOOBCorners()
 		{
+			// does this polygon contain a map corner?
 			for (int i = 0; i < voronoiEdges.Count; ++i)
 			{
 				var edge = voronoiEdges[i];
 				if (VoronoiGenerator.TryGetBoundsIntersection(edge.start.position, edge.end.position,
-					out Dictionary<VoronoiGenerator.MapSide, Vector2> intersections, out byte corner))
+					out Dictionary<VoronoiGenerator.MapSide, Vector2> intersections, out byte cornerByte))
 				{
 					if (intersections.Count == 2) // corner cutter
 					{
-						// create new corner at map corner
-						Vector2 newPos;
-						switch (corner)
+						// find already created corner
+						if (!VoronoiGraph.mapCorners.TryGetValue(cornerByte, out Corner newCorner))
 						{
-							case VoronoiGenerator.TopRight:
-								newPos = VoronoiGenerator.mapBounds.max;
-								break;
-							case VoronoiGenerator.TopLeft:
-								newPos = new Vector2(VoronoiGenerator.mapBounds.xMin, VoronoiGenerator.mapBounds.yMax);
-								break;
-							case VoronoiGenerator.BottomLeft:
-								newPos = VoronoiGenerator.mapBounds.min;
-								break;
-							case VoronoiGenerator.BottomRight:
-								newPos = new Vector2(VoronoiGenerator.mapBounds.xMax, VoronoiGenerator.mapBounds.yMin);
-								break;
-							default:
-								newPos = Vector2.zero;
-								continue;
+							throw new Exception("Couldn't find map corner!");
 						}
 
-						Corner newCorner = new Corner(newPos, VoronoiGraph.cornerCount++);
 						corners.Add(newCorner);
 						newCorner.polygons.Add(this);
 						VoronoiGraph.uniqueCorners.Add(newCorner);
@@ -113,14 +126,20 @@ namespace AtomosZ.Voronoi
 						MovePointToBorderIntersect(p1, p1OtherEdge);
 						MovePointToBorderIntersect(p2, p2OtherEdge);
 
+						foreach (var oobCorner in oobCorners)
+						{
+							oobCorner.RemoveFrom(this);
+							corners.Remove(oobCorner);
+						}
+
+						oobCorners.Clear();
 						// the chances of having two corner cutters in one polygon is highly
 						// unlikely and SHOULD be impossible with reasonable map constraints
-						break;
+						return;
 					}
 				}
 			}
 		}
-
 
 
 		private void MovePointToBorderIntersect(Corner corner, VEdge otherEdge)
@@ -136,6 +155,7 @@ namespace AtomosZ.Voronoi
 			else
 			{
 				corner.position = intersectPoint;
+				corner.isOOB = false;
 			}
 		}
 
@@ -157,6 +177,7 @@ namespace AtomosZ.Voronoi
 			else
 			{
 				mergePoint.position = intersectPoint;
+				mergePoint.isOOB = false;
 				MergeCorners(mergePoint, removePoint);
 			}
 
@@ -170,20 +191,26 @@ namespace AtomosZ.Voronoi
 				throw new System.Exception("Can't merge two corners that don't share an edge");
 
 			// merge all connected edges
-			foreach (var edge in remove.connectedEdges)
+			for (int i = remove.connectedEdges.Count - 1; i >= 0; --i)
 			{
+				VEdge edge = remove.connectedEdges[i];
 				if (edge == connectingEdge)
 					continue;
 				edge.ReplaceSite(remove, mergeInto);
-				mergeInto.connectedEdges.Add(edge);
 			}
 
-			remove.connectedEdges = null;
+			remove.connectedEdges.Clear();
 
 			// clean up polygons
 			foreach (var polygon in remove.polygons)
 			{
 				polygon.voronoiEdges.Remove(connectingEdge);
+				if (polygon.voronoiEdges.Count < 3)
+				{
+					polygon.Invalidate();
+					continue;
+				}
+
 				if (!mergeInto.polygons.Contains(polygon))
 				{
 					mergeInto.polygons.Add(polygon);
@@ -193,12 +220,23 @@ namespace AtomosZ.Voronoi
 				polygon.corners.Remove(remove);
 			}
 
-			remove.polygons = null;
+			remove.polygons.Clear();
 
 			if (remove.delaunayTriangle != null)
 			{
 				remove.delaunayTriangle.Invalidate();
 			}
+		}
+
+		private void Invalidate()
+		{
+			Debug.Log("Invalid Polygon - destroy: " + GetName());
+			isInvalid = true;
+			foreach (var corner in corners)
+				corner.polygons.Remove(this);
+			corners = null;
+			voronoiEdges = null;
+			VoronoiGraph.invalidatedPolygons.Add(this);
 		}
 	}
 
@@ -206,6 +244,7 @@ namespace AtomosZ.Voronoi
 
 	/// <summary>
 	/// An area centered around a Corner (VSite), composed of centroids (DSite) and edges (DEdge)
+	/// @TODO: find corners that are too close and merge them.
 	/// </summary>
 	public class DelaunayTriangle
 	{
@@ -248,6 +287,8 @@ namespace AtomosZ.Voronoi
 		{
 			if (corner == null)
 			{
+				if (isInvalidated)
+					throw new System.Exception("Cannot create corner on an invalidated triangle");
 				corner = new Corner(this, VoronoiGraph.cornerCount++);
 				if (!VoronoiGraph.uniqueCorners.Add(corner))
 				{
@@ -259,7 +300,7 @@ namespace AtomosZ.Voronoi
 			return corner;
 		}
 
-		
+
 		public void Invalidate()
 		{
 			isInvalidated = true;
