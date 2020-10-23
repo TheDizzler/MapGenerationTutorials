@@ -181,7 +181,6 @@ namespace AtomosZ.Voronoi
 				{
 					if (currentPolygon.corners.Any(corner => corner.isMapCorner))
 					{
-						Debug.Log("got to next corner");
 						Corner mapCorner = currentPolygon.corners.FirstOrDefault(corner => corner.isMapCorner);
 
 						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge);
@@ -191,11 +190,9 @@ namespace AtomosZ.Voronoi
 					else
 					{
 						// this should be a polygon with an corner-cutting edge
-						Debug.Log("intersections count: " + intersections.Count);
 						if (!TryGetCornerCutterEdge(currentPolygon, out VEdge cornerCutterEdge, out byte cornerByte))
 						{
-							Debug.Log("Are we finished?");
-							break;
+							throw new System.Exception("Invalid attempt to get a corner cutter edge");
 						}
 
 						// find other edge intersection
