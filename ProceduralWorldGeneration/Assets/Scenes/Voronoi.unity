@@ -314,8 +314,8 @@ MonoBehaviour:
   regionHolder: {fileID: 1261111803}
   regions:
   - {fileID: 2018202060}
-  fixOOBCorners: 1
-  fixOOBEdges: 0
+  fixOOBCorners: 0
+  clampToMapBounds: 1
 --- !u!1 &1261111802
 GameObject:
   m_ObjectHideFlags: 0

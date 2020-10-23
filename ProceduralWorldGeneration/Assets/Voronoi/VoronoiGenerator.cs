@@ -24,8 +24,6 @@ namespace AtomosZ.Tutorials.Voronoi
 		};
 
 		public static Random rng;
-
-		public static bool fixCorners;
 		public static bool fixEdges;
 
 		public static Vector2 topLeft;
@@ -60,13 +58,12 @@ namespace AtomosZ.Tutorials.Voronoi
 		public List<Region> regions;
 
 		public bool fixOOBCorners = false;
-		public bool fixOOBEdges = false;
+		public bool clampToMapBounds = true;
 		
 
 		public void GenerateMap()
 		{
-			fixCorners = fixOOBCorners;
-			fixEdges = fixOOBEdges;
+			fixEdges = clampToMapBounds;
 
 			if (useRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();
