@@ -63,22 +63,6 @@ namespace AtomosZ.Voronoi
 				dGraph.centroids.Remove(polygon.centroid);
 				++culled;
 			}
-			Debug.Log(culled + " culled polygons");
-
-			foreach (var edge in invalidatedEdges)
-			{
-				edge.start.connectedEdges.Remove(edge);
-				if (edge.start.connectedEdges.Count <= 1)
-				{
-					uniqueCorners.Remove(edge.start);
-					//edge.start. remove dangling edge
-				}
-
-				edge.end.connectedEdges.Remove(edge);
-				if (edge.end.connectedEdges.Count <= 1)
-					uniqueCorners.Remove(edge.end);
-				uniqueVEdges.Remove(edge);
-			}
 
 			for (int i = removeCorners.Count - 1; i >= 0; --i)
 			{
@@ -104,6 +88,7 @@ namespace AtomosZ.Voronoi
 				RemoveCorner(removing);
 			}
 		}
+
 
 		private void FixCorners()
 		{
