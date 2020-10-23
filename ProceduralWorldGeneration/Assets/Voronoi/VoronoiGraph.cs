@@ -16,9 +16,8 @@ namespace AtomosZ.Voronoi
 
 		private static DelaunayGraph delaunayGraph;
 
-
 		public List<Polygon> polygons;
-
+		private List<Corner> removeCorners;
 
 
 		public VoronoiGraph(DelaunayGraph dGraph)
@@ -27,6 +26,7 @@ namespace AtomosZ.Voronoi
 			cornerCount = 0;
 			uniqueVEdges = new HashSet<VEdge>();
 			uniqueCorners = new HashSet<Corner>();
+			removeCorners = new List<Corner>();
 			mapCorners = new Dictionary<byte, Corner>()
 			{
 				[VoronoiGenerator.TopRightCornerByte] = new Corner(VoronoiGenerator.topRight, cornerCount++, true),
@@ -80,6 +80,29 @@ namespace AtomosZ.Voronoi
 				uniqueVEdges.Remove(edge);
 			}
 
+			for (int i = removeCorners.Count - 1; i >= 0; --i)
+			{
+				Corner removing = removeCorners[i];
+				for (int j = removing.connectedEdges.Count - 1; j >= 0; --j)
+				{
+					VEdge edge = removing.connectedEdges[j];
+					removing.connectedEdges.Remove(edge);
+					uniqueVEdges.Remove(edge);
+					Corner opposite = edge.GetOppositeSite(removing);
+					foreach (var poly in edge.polygons)
+					{
+						poly.voronoiEdges.Remove(edge);
+						poly.corners.Remove(removing);
+					}
+
+					if (opposite.isOOB)
+					{
+						opposite.connectedEdges.Remove(edge);
+					}
+				}
+
+				RemoveCorner(removing);
+			}
 		}
 
 		private void FixCorners()
@@ -219,37 +242,31 @@ namespace AtomosZ.Voronoi
 					// connect first corner to new point
 					lastCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge);
 					currentPolygon.voronoiEdges.Add(newBorderEdge);
-					// mark all remaining oob corners and edges in polygon to removed
 
 					lastCorner = newCorner;
 				}
 
+				// mark all remaining oob corners and edges in polygon to removed
+				foreach (var corner in currentPolygon.corners)
+					if (corner.isOOB)
+						removeCorners.Add(corner);
 
 				if (firstCorner == lastCorner)
 				{ // done!
 					break;
 				}
 
-				
-
 				// move to next polygon connected to bisected edge
 				found = false;
 				foreach (var polygon in lastCorner.polygons)
 				{
-					if (/*polygon.oobCorners.Count > 0 &&*/ polygon != currentPolygon)
+					if (polygon != currentPolygon)
 					{
 						found = true;
 						currentPolygon = polygon;
 						break;
 					}
 				}
-
-				if (!found)
-				{
-					Debug.LogWarning("No valid polygons found");
-					break;
-				}
-
 			}
 		}
 

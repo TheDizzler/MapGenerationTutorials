@@ -301,8 +301,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   useRandomSeed: 0
   randomSeed: 637384585854634207
-  mapWidth: 50
-  mapHeight: 50
+  mapWidth: 30
+  mapHeight: 30
   regionAmount: 119
   minSqrDistanceBetweenSites: 0.5
   viewDelaunayCircles: 0
