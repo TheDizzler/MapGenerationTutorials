@@ -141,11 +141,7 @@ namespace AtomosZ.Voronoi
 				if (isInvalidated)
 					throw new System.Exception("Cannot create corner on an invalidated triangle");
 				corner = new Corner(this, VoronoiGraph.cornerCount++);
-				if (!VoronoiGraph.uniqueCorners.Add(corner))
-				{
-					// this will do nothing. What we need to do is check the position. However, triangles SHOULD all unique anyway.
-					//Debug.Log("Non-unique corner: " + this.center.num);
-				}
+				VoronoiGraph.uniqueCorners.Add(corner);
 			}
 
 			return corner;

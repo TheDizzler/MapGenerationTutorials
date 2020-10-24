@@ -101,7 +101,7 @@ namespace AtomosZ.Voronoi
 			}
 
 			if (neighbours.Count != 2) // this is probably a map corner
-				throw new System.Exception("Corner has an unusual amount of neighbhours!");
+				throw new System.Exception("Corner has an unusual amount of neighbhours: " + neighbours.Count);
 
 			return neighbours;
 		}

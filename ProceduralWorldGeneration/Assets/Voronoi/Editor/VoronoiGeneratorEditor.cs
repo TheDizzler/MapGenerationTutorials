@@ -83,17 +83,4 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 			}
 		}
 	}
-
-	[CustomEditor(typeof(VoronoiLibGenerator))]
-	public class VoronoiLibGeneratorEditor : Editor
-	{
-		public override void OnInspectorGUI()
-		{
-			VoronoiLibGenerator gen = (VoronoiLibGenerator)target;
-			if (GUILayout.Button("Generate Voronoi") || DrawDefaultInspector())
-			{
-				gen.GeneratePoints();
-			}
-		}
-	}
 }
