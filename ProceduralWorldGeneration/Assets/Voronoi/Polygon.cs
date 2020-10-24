@@ -81,7 +81,7 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-		private void Invalidate()
+		public void Invalidate()
 		{
 			Debug.Log("Invalid Polygon - destroy: " + GetName());
 			isInvalid = true;

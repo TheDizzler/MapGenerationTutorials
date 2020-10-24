@@ -293,18 +293,27 @@ namespace AtomosZ.Voronoi
 
 
 
-		public static void RemoveCorner(Corner insideCorner)
+		public static void RemoveCorner(Corner corner)
 		{
-			insideCorner.polygons.Clear();
-			insideCorner.connectedEdges.Clear();
-			if (insideCorner.delaunayTriangle != null)
+			foreach (var polygon in corner.polygons)
 			{
-				insideCorner.delaunayTriangle.Invalidate();
-				delaunayGraph.triangles.Remove(insideCorner.delaunayTriangle);
-				insideCorner.delaunayTriangle = null;
+				polygon.corners.Remove(corner);
+				polygon.oobCorners.Remove(corner);
+				if (polygon.corners.Count < 3)
+					polygon.Invalidate();
 			}
 
-			uniqueCorners.Remove(insideCorner);
+			corner.polygons.Clear();
+			corner.connectedEdges.Clear();
+
+			if (corner.delaunayTriangle != null)
+			{
+				corner.delaunayTriangle.Invalidate();
+				delaunayGraph.triangles.Remove(corner.delaunayTriangle);
+				corner.delaunayTriangle = null;
+			}
+
+			uniqueCorners.Remove(corner);
 		}
 	}
 }
