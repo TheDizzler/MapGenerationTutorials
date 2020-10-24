@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using AtomosZ.Tutorials.Voronoi;
+using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -48,11 +49,8 @@ namespace AtomosZ.Voronoi
 				if (dTriangle.isInvalidated)
 					continue;
 				var corner = dTriangle.GetCorner();
-				corner.polygons.Add(this);
-				corners.Add(corner);
-				if (corner.isOOB)
-					oobCorners.Add(corner);
-
+				VoronoiHelper.Associate(this, corner);
+				
 				foreach (var tri in centroid.dTriangles)
 				{
 					if (tri == dTriangle || tri.isInvalidated)

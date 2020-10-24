@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using AtomosZ.Tutorials.Voronoi;
+using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -60,32 +61,28 @@ namespace AtomosZ.Voronoi
 			foreach (var polygon in invalidatedPolygons)
 			{
 				polygons.Remove(polygon);
-				dGraph.centroids.Remove(polygon.centroid);
 				++culled;
 			}
 
 			for (int i = removeCorners.Count - 1; i >= 0; --i)
 			{
-				Corner removing = removeCorners[i];
-				for (int j = removing.connectedEdges.Count - 1; j >= 0; --j)
+				Corner removingCorner = removeCorners[i];
+				for (int j = removingCorner.connectedEdges.Count - 1; j >= 0; --j)
 				{
-					VEdge edge = removing.connectedEdges[j];
-					removing.connectedEdges.Remove(edge);
+					VEdge edge = removingCorner.connectedEdges[j];
+					removingCorner.connectedEdges.Remove(edge);
 					uniqueVEdges.Remove(edge);
-					Corner opposite = edge.GetOppositeSite(removing);
-					foreach (var poly in edge.polygons)
+					Corner opposite = edge.GetOppositeSite(removingCorner);
+					opposite.connectedEdges.Remove(edge);
+					foreach (var poly in removingCorner.polygons)
 					{
 						poly.voronoiEdges.Remove(edge);
-						poly.corners.Remove(removing);
-					}
-
-					if (opposite.isOOB)
-					{
-						opposite.connectedEdges.Remove(edge);
 					}
 				}
 
-				RemoveCorner(removing);
+				removingCorner.connectedEdges.Clear();
+
+				RemoveCorner(removingCorner);
 			}
 		}
 
@@ -125,8 +122,7 @@ namespace AtomosZ.Voronoi
 
 					foreach (var movedPolygon in insideCorner.polygons)
 					{
-						mapCorner.polygons.Add(movedPolygon);
-						movedPolygon.corners.Add(mapCorner);
+						VoronoiHelper.Associate(movedPolygon, mapCorner);
 						movedPolygon.corners.Remove(insideCorner);
 					}
 
@@ -170,6 +166,7 @@ namespace AtomosZ.Voronoi
 
 						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge);
 						currentPolygon.voronoiEdges.Add(newBorderEdge);
+						newBorderEdge.polygons.Add(currentPolygon);
 						lastCorner = mapCorner;
 					}
 					else
@@ -197,10 +194,13 @@ namespace AtomosZ.Voronoi
 						Corner mapCorner = mapCorners[cornerByte];
 						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge1);
 						mapCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge2);
-						currentPolygon.corners.Add(mapCorner);
-						currentPolygon.corners.Add(newCorner);
+						VoronoiHelper.Associate(currentPolygon, mapCorner);
+						VoronoiHelper.Associate(currentPolygon, newCorner);
+
 						currentPolygon.voronoiEdges.Add(newBorderEdge1);
 						currentPolygon.voronoiEdges.Add(newBorderEdge2);
+						newBorderEdge1.polygons.Add(currentPolygon);
+						newBorderEdge2.polygons.Add(currentPolygon);
 						currentPolygon.voronoiEdges.Remove(cornerCutterEdge);
 						uniqueVEdges.Remove(cornerCutterEdge);
 
@@ -219,12 +219,12 @@ namespace AtomosZ.Voronoi
 
 					// create new Corner at intersect point and bisect edge
 					BisectEdge(edge, intersectPoint, out Corner newCorner, out VEdge newOOBEdge);
-					currentPolygon.corners.Add(newCorner);
+					VoronoiHelper.Associate(currentPolygon, newCorner);
 
 					// connect first corner to new point
 					lastCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge);
 					currentPolygon.voronoiEdges.Add(newBorderEdge);
-
+					newBorderEdge.polygons.Add(currentPolygon);
 					lastCorner = newCorner;
 				}
 
@@ -292,7 +292,6 @@ namespace AtomosZ.Voronoi
 		}
 
 
-
 		public static void RemoveCorner(Corner corner)
 		{
 			foreach (var polygon in corner.polygons)
@@ -304,7 +303,6 @@ namespace AtomosZ.Voronoi
 			}
 
 			corner.polygons.Clear();
-			corner.connectedEdges.Clear();
 
 			if (corner.delaunayTriangle != null)
 			{

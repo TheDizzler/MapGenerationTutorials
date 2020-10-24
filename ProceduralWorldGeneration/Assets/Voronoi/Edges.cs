@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using AtomosZ.Voronoi.Helpers;
 
 namespace AtomosZ.Voronoi
 {
@@ -38,7 +39,7 @@ namespace AtomosZ.Voronoi
 			}
 
 			foreach(var polygon in polygons)
-				newSite.polygons.Add(polygon);
+				VoronoiHelper.Associate(polygon, newSite);
 		}
 	}
 
