@@ -25,6 +25,8 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		public static Random rng;
 		public static bool fixEdges;
+		public static bool mergeNearCorners;
+		public static float minSqrDistBetweenCorners;
 
 		public static Vector2 topLeft;
 		public static Vector2 topRight;
@@ -43,8 +45,8 @@ namespace AtomosZ.Tutorials.Voronoi
 		public int mapHeight = 512;
 		[Range(0, 256)]
 		public int regionAmount = 50;
-		[Range(.5f, 5.00f)]
-		public float minSqrDistanceBetweenSites;
+		[Range(.5f, 15.00f)]
+		public float minSqrDistanceBetweenSites = 2.0f;
 
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
@@ -57,13 +59,16 @@ namespace AtomosZ.Tutorials.Voronoi
 		public Transform regionHolder;
 		public List<Region> regions;
 
-		public bool fixOOBCorners = false;
 		public bool clampToMapBounds = true;
+		public bool fixNearCorners = true;
+		public bool createRegions = true;
 		
 
 		public void GenerateMap()
 		{
 			fixEdges = clampToMapBounds;
+			mergeNearCorners = fixNearCorners;
+			minSqrDistBetweenCorners = minSqrDistanceBetweenSites;
 
 			if (useRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();

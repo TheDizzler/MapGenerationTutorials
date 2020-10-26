@@ -87,6 +87,21 @@ namespace AtomosZ.Voronoi
 		}
 
 
+		public static bool TryGetNearCorner(Vector2 position, out Corner closeCorner)
+		{
+			foreach (var corner in uniqueCorners)
+			{
+				if ((corner.position - position).sqrMagnitude < VoronoiGenerator.minSqrDistBetweenCorners)
+				{
+					closeCorner = corner;
+					return true;
+				}
+			}
+
+			closeCorner = null;
+			return false;
+		}
+
 		private void FixCorners()
 		{
 			foreach (var polygon in polygons)

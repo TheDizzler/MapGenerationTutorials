@@ -49,8 +49,10 @@ namespace AtomosZ.Voronoi
 				if (dTriangle.isInvalidated)
 					continue;
 				var corner = dTriangle.GetCorner();
+				if (corners.Contains(corner)) // corners get merged
+					continue;
 				VoronoiHelper.Associate(this, corner);
-				
+
 				foreach (var tri in centroid.dTriangles)
 				{
 					if (tri == dTriangle || tri.isInvalidated)
