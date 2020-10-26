@@ -119,7 +119,7 @@ namespace AtomosZ.Voronoi
 						continue; // edge completely OOB || edge is completely inbounds, therefore uninteresting to us
 
 					if (edge.start.isMapCorner || edge.end.isMapCorner)
-						continue; // make sure we only change this edge once
+						continue; // make sure we only change this edge once - may be redundant
 
 					if (!VoronoiGenerator.TryGetClosestCorner(edge, out byte cornerByte))
 						continue;
@@ -176,12 +176,11 @@ namespace AtomosZ.Voronoi
 					|| intersections.Count != 1)
 				{
 					if (currentPolygon.corners.Any(corner => corner.isMapCorner))
-					{
+					{ // border done -> go to next corner
 						Corner mapCorner = currentPolygon.corners.FirstOrDefault(corner => corner.isMapCorner);
 
 						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge);
-						currentPolygon.voronoiEdges.Add(newBorderEdge);
-						newBorderEdge.polygons.Add(currentPolygon);
+						VoronoiHelper.Associate(currentPolygon, newBorderEdge);
 						lastCorner = mapCorner;
 					}
 					else
@@ -212,10 +211,9 @@ namespace AtomosZ.Voronoi
 						VoronoiHelper.Associate(currentPolygon, mapCorner);
 						VoronoiHelper.Associate(currentPolygon, newCorner);
 
-						currentPolygon.voronoiEdges.Add(newBorderEdge1);
-						currentPolygon.voronoiEdges.Add(newBorderEdge2);
-						newBorderEdge1.polygons.Add(currentPolygon);
-						newBorderEdge2.polygons.Add(currentPolygon);
+						VoronoiHelper.Associate(currentPolygon, newBorderEdge1);
+						VoronoiHelper.Associate(currentPolygon, newBorderEdge2);
+
 						currentPolygon.voronoiEdges.Remove(cornerCutterEdge);
 						uniqueVEdges.Remove(cornerCutterEdge);
 
@@ -238,8 +236,7 @@ namespace AtomosZ.Voronoi
 
 					// connect first corner to new point
 					lastCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge);
-					currentPolygon.voronoiEdges.Add(newBorderEdge);
-					newBorderEdge.polygons.Add(currentPolygon);
+					VoronoiHelper.Associate(currentPolygon, newBorderEdge);
 					lastCorner = newCorner;
 				}
 

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using AtomosZ.Tutorials.Voronoi;
+﻿using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -62,13 +60,11 @@ namespace AtomosZ.Voronoi
 					{
 						if (!corner.TryGetEdgeWith(tri.GetCorner(), out VEdge vEdge))
 						{ // a new edge was created
-							voronoiEdges.Add(vEdge);
-							vEdge.polygons.Add(this);
+							VoronoiHelper.Associate(this, vEdge);
 						}
 						else if (!voronoiEdges.Contains(vEdge))
 						{
-							voronoiEdges.Add(vEdge);
-							vEdge.polygons.Add(this);
+							VoronoiHelper.Associate(this, vEdge);
 						}
 
 					}
@@ -138,12 +134,20 @@ namespace AtomosZ.Voronoi
 		/// <returns></returns>
 		public Corner GetCorner()
 		{
+			if (isInvalidated)
+				throw new System.Exception("Cannot get corner on an invalidated triangle");
+
 			if (corner == null)
 			{
-				if (isInvalidated)
-					throw new System.Exception("Cannot create corner on an invalidated triangle");
-				corner = new Corner(this, VoronoiGraph.cornerCount++);
-				VoronoiGraph.uniqueCorners.Add(corner);
+				if (!VoronoiGraph.TryGetNearCorner(realCenter, out Corner closeCorner))
+				{
+					corner = new Corner(this, VoronoiGraph.cornerCount++);
+					VoronoiGraph.uniqueCorners.Add(corner);
+				}
+				else
+				{
+					corner = closeCorner;
+				}
 			}
 
 			return corner;

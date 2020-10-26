@@ -39,6 +39,7 @@ namespace AtomosZ.Voronoi
 			}
 
 			foreach(var polygon in polygons)
+				if (!polygon.corners.Contains(newSite))
 				VoronoiHelper.Associate(polygon, newSite);
 		}
 	}
