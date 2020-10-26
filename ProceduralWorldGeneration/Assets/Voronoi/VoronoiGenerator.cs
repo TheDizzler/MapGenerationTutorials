@@ -443,6 +443,9 @@ namespace AtomosZ.Tutorials.Voronoi
 				foreach (var region in regions)
 					DestroyImmediate(region.gameObject);
 
+			regions.Clear();
+			if (!createRegions)
+				return;
 			regions = new List<Region>();
 
 			foreach (var polygon in vGraph.polygons)
