@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using AtomosZ.Tutorials.Voronoi;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -99,8 +100,7 @@ namespace AtomosZ.Voronoi
 	{
 		public Centroid p1, p2, p3;
 		/// <summary>
-		/// Because the corners may be outside the map extremities, the actual triangle center
-		/// may not be the same.
+		/// Corners may get merged or removed, so 
 		/// </summary>
 		public Vector2 realCenter;
 		public float radius;
@@ -139,14 +139,63 @@ namespace AtomosZ.Voronoi
 
 			if (corner == null)
 			{
-				if (!VoronoiGraph.TryGetNearCorner(realCenter, out Corner closeCorner))
+				if (!VoronoiGraph.TryGetNearCorner(realCenter, out corner))
 				{
 					corner = new Corner(this, VoronoiGraph.cornerCount++);
 					VoronoiGraph.uniqueCorners.Add(corner);
-				}
-				else
-				{
-					corner = closeCorner;
+					if (!corner.isOOB)
+					{
+						bool isCloseToTop = VoronoiGenerator.topRight.y - realCenter.y < VoronoiGenerator.minDistCornerAndBorder;
+						bool isCloseToRight = VoronoiGenerator.topRight.x - realCenter.x < VoronoiGenerator.minDistCornerAndBorder;
+						bool isCloseToLeft = realCenter.x - VoronoiGenerator.bottomLeft.x < VoronoiGenerator.minDistCornerAndBorder;
+						bool isCloseToBottom = realCenter.y - VoronoiGenerator.bottomLeft.y < VoronoiGenerator.minDistCornerAndBorder;
+						if (isCloseToTop)
+						{
+							if (isCloseToRight)
+							{
+								VoronoiGraph.uniqueCorners.Remove(corner);
+								--VoronoiGraph.cornerCount;
+								corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopRightCornerByte];
+							}
+							else if (isCloseToLeft)
+							{
+								VoronoiGraph.uniqueCorners.Remove(corner);
+								--VoronoiGraph.cornerCount;
+								corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopLeftCornerByte];
+							}
+							else
+							{
+								corner.position.y = VoronoiGenerator.topRight.y;
+							}
+						}
+						else if (isCloseToBottom)
+						{
+							if (isCloseToRight)
+							{
+								VoronoiGraph.uniqueCorners.Remove(corner);
+								--VoronoiGraph.cornerCount;
+								corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomRightCornerByte];
+							}
+							else if (isCloseToLeft)
+							{
+								VoronoiGraph.uniqueCorners.Remove(corner);
+								--VoronoiGraph.cornerCount;
+								corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomLeftCornerByte];
+							}
+							else
+							{
+								corner.position.y = VoronoiGenerator.bottomRight.y;
+							}
+						}
+						else if (isCloseToRight)
+						{
+							corner.position.x = VoronoiGenerator.bottomRight.x;
+						}
+						else if (isCloseToLeft)
+						{
+							corner.position.x = VoronoiGenerator.bottomLeft.x;
+						}
+					}
 				}
 			}
 

@@ -27,6 +27,7 @@ namespace AtomosZ.Tutorials.Voronoi
 		public static bool fixEdges;
 		public static bool mergeNearCorners;
 		public static float minSqrDistBetweenCorners;
+		public static float minDistCornerAndBorder;
 
 		public static Vector2 topLeft;
 		public static Vector2 topRight;
@@ -47,6 +48,8 @@ namespace AtomosZ.Tutorials.Voronoi
 		public int regionAmount = 50;
 		[Range(.5f, 15.00f)]
 		public float minSqrDistanceBetweenSites = 2.0f;
+		[Range(.05f, 5f)]
+		public float minDistanceBetweenCornerAndBorder = .25f;
 
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
@@ -69,6 +72,7 @@ namespace AtomosZ.Tutorials.Voronoi
 			fixEdges = clampToMapBounds;
 			mergeNearCorners = fixNearCorners;
 			minSqrDistBetweenCorners = minSqrDistanceBetweenSites;
+			minDistCornerAndBorder = minDistanceBetweenCornerAndBorder;
 
 			if (useRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();
