@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi.Regions
@@ -45,10 +46,14 @@ namespace AtomosZ.Voronoi.Regions
 
 			Mesh mesh = new Mesh();
 			mesh.SetVertices(vertices);
-			mesh.triangles  = 
-				triangles;
-			mesh.RecalculateBounds();
+			mesh.triangles = triangles;
+			mesh.RecalculateNormals();
 
+			List<Vector3> normals = new List<Vector3>();
+			mesh.GetNormals(normals);
+			if (normals[0].z > 0)
+				mesh.triangles = triangles.Reverse().ToArray();
+			
 			return mesh;
 		}
 
