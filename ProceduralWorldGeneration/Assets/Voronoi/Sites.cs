@@ -64,7 +64,8 @@ namespace AtomosZ.Voronoi
 
 		/// <summary>
 		/// Check if a VEdge already exists between the two corners.
-		/// Returns the edge if already exists and creates it if it doesn't.
+		/// If the edge doesn't already exist it creates it.
+		/// Returns true if edge already existed, false if it was created.
 		/// </summary>
 		/// <param name="other"></param>
 		/// <param name="sharedEdge"></param>
