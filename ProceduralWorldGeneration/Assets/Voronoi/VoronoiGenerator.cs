@@ -25,9 +25,9 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		public static Random rng;
 		public static bool fixEdges;
-		public static bool mergeNearCorners;
 		public static float minSqrDistBetweenCorners;
 		public static float minDistCornerAndBorder;
+		public static bool MergeNearCorners;
 
 		public static Vector2 topLeft;
 		public static Vector2 topRight;
@@ -46,8 +46,8 @@ namespace AtomosZ.Tutorials.Voronoi
 		public int mapHeight = 512;
 		[Range(0, 256)]
 		public int regionAmount = 50;
-		[Range(.5f, 15.00f)]
-		public float minSqrDistanceBetweenSites = 2.0f;
+		[Range(.0f, 15.00f)]
+		public float minSqrDistanceBetweenSites = .5f;
 		[Range(.05f, 5f)]
 		public float minDistanceBetweenCornerAndBorder = .25f;
 
@@ -62,15 +62,17 @@ namespace AtomosZ.Tutorials.Voronoi
 		public Transform regionHolder;
 		public List<Region> regions;
 
+		public bool mergeNearCorners = true;
 		public bool clampToMapBounds = true;
-		public bool fixNearCorners = true;
 		public bool createRegions = true;
+
 		
 
 		public void GenerateMap()
 		{
+			MergeNearCorners = mergeNearCorners;
 			fixEdges = clampToMapBounds;
-			mergeNearCorners = fixNearCorners;
+
 			minSqrDistBetweenCorners = minSqrDistanceBetweenSites;
 			minDistCornerAndBorder = minDistanceBetweenCornerAndBorder;
 
@@ -206,6 +208,52 @@ namespace AtomosZ.Tutorials.Voronoi
 			return false;
 		}
 
+		public static Corner GetClosestCornerToMapCorner(Polygon currentPolygon, out Corner mapCorner)
+		{
+			// find closest mapCorner to polygon. Realistically, if all corners don't share the same 
+			// closest mapCorner as the centroid of the polygon then the map should be too small to be valid/useful.
+			float closestSqrDist = float.MaxValue;
+			mapCorner = null;
+			foreach (var kvp in VoronoiGraph.mapCorners)
+			{
+				float dist = (currentPolygon.centroid.position - kvp.Value.position).sqrMagnitude;
+				if (dist < closestSqrDist)
+				{
+					closestSqrDist = dist;
+					mapCorner = kvp.Value;
+				}
+			}
+
+			Corner closestCorner = null;
+			closestSqrDist = float.MaxValue;
+			foreach (var corner in currentPolygon.corners)
+			{
+				float dist = (corner.position - mapCorner.position).sqrMagnitude;
+				if (dist < closestSqrDist)
+				{
+					closestSqrDist = dist;
+					closestCorner = corner;
+				}
+			}
+
+			return closestCorner;
+		}
+
+		public static bool IsOnBorder(Corner corner)
+		{
+			return Mathf.Approximately(corner.position.x, mapBounds.xMin)
+				|| Mathf.Approximately(corner.position.x, mapBounds.xMax)
+				|| Mathf.Approximately(corner.position.y, mapBounds.yMin)
+				|| Mathf.Approximately(corner.position.y, mapBounds.yMax);
+		}
+
+		/// <summary>
+		/// Gets closest map corner to edge IF it crosses a map border.
+		/// If not, returns false.
+		/// </summary>
+		/// <param name="edge"></param>
+		/// <param name="cornerByte"></param>
+		/// <returns></returns>
 		public static bool TryGetClosestCorner(VEdge edge, out byte cornerByte)
 		{
 			Vector2 lineStart = edge.start.position;
@@ -216,12 +264,10 @@ namespace AtomosZ.Tutorials.Voronoi
 			{
 				//errorEdge = edge;
 				return false;
-				throw new System.Exception("Edge does not cross a border! Corner? Pos: " + lineStart + ", " + lineEnd);
-				
 			}
 
 			float minDistance = Vector2.Distance(intersectPoint, topRight);
-			
+
 			float toTopLeft = Vector2.Distance(intersectPoint, topLeft);
 			if (toTopLeft < minDistance)
 			{
@@ -291,18 +337,16 @@ namespace AtomosZ.Tutorials.Voronoi
 
 		public static bool TryGetBoundsIntersection(Polygon polygon, out Dictionary<VEdge, Vector2> intersections)
 		{
-			bool intersectionFound = false;
 			intersections = new Dictionary<VEdge, Vector2>();
 			foreach (var edge in polygon.voronoiEdges)
 			{
 				if (TryGetFirstMapBoundsIntersection(edge.start.position, edge.end.position, out Vector2 intersectPoint))
 				{
 					intersections.Add(edge, intersectPoint);
-					intersectionFound = true;
 				}
 			}
 
-			return intersectionFound;
+			return intersections.Count > 0;
 		}
 
 		/// <summary>

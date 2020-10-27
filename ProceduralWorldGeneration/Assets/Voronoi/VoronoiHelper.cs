@@ -10,7 +10,12 @@ namespace AtomosZ.Voronoi.Helpers
 			{
 				polygon.corners.Add(corner);
 				if (corner.isOOB)
+				{
 					polygon.oobCorners.Add(corner);
+					polygon.isOnBorder = true;
+				}
+				else if (corner.isOnBorder)
+					polygon.isOnBorder = true;
 			}
 			else
 				throw new Exception("polygon already contains this corner");
@@ -25,10 +30,31 @@ namespace AtomosZ.Voronoi.Helpers
 			else
 				polygon.voronoiEdges.Add(edge);
 
-			if (edge.polygons.Contains(polygon))
-				throw new Exception("edge already contains this polygon");
-			else
-				edge.polygons.Add(polygon);
+			if (edge.Contains(polygon))
+				throw new System.Exception("edge already contains this polygon");
+			edge.AddPolygon(polygon);
 		}
+
+
+		public static void MergeCorners(Corner deprecatedCorner, Corner mergedCorner)
+		{
+			if (!(deprecatedCorner.isOnBorder ^ mergedCorner.isOnBorder)) // if they are both on the border or both off
+			{
+				mergedCorner.position = (deprecatedCorner.position + mergedCorner.position) / 2; // get midpoint
+				mergedCorner.isOnBorder = deprecatedCorner.isOnBorder;
+			}
+			else if (deprecatedCorner.isOnBorder) // if only old corner is on the border use its position
+			{
+				mergedCorner.position = deprecatedCorner.position;
+				mergedCorner.isOnBorder = true;
+			}
+			// otherwise mergedCorner is on the border so leave as it is
+
+			for (int i = deprecatedCorner.connectedEdges.Count - 1; i >= 0; --i)
+				deprecatedCorner.connectedEdges[i].ReplaceSite(deprecatedCorner, mergedCorner);
+
+			deprecatedCorner.isInvalidated = true;
+		}
+
 	}
 }

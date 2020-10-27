@@ -1,23 +1,56 @@
 ﻿using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
+using UnityEngine;
 
 namespace AtomosZ.Voronoi
 {
 	public class VEdge : Edge<Corner>
 	{
 		private static int count = 0;
-		public HashSet<Polygon> polygons;
+
+		private List<Polygon> polygons = new List<Polygon>();
+
 
 		public VEdge(Corner p1, Corner p2) : base(p1, p2)
 		{
 			num = count++;
 			p1.connectedEdges.Add(this);
 			p2.connectedEdges.Add(this);
-			polygons = new HashSet<Polygon>();
+		}
+
+
+		public void AddPolygon(Polygon polygon)
+		{
+			polygons.Add(polygon);
+			if (polygons.Count > 2)
+				throw new System.Exception("An edge may not have more than 2 polygons!");
+		}
+
+		public void Remove(Polygon polygon)
+		{
+			polygons.Remove(polygon);
+			Debug.Log("Edge has no polygons - deleting");
+			VoronoiGraph.uniqueVEdges.Remove(this);
+		}
+
+		public List<Polygon> GetPolygons()
+		{
+			return polygons;
+		}
+
+		public bool Contains(Polygon polygon)
+		{
+			return polygons.Contains(polygon);
+		}
+
+		public int GetPolygonCount()
+		{
+			return polygons.Count;
 		}
 
 		/// <summary>
-		/// Adds edge polygons to newSite.
+		/// Replaces oldSite with newSite in this edge, using newSites position and all other properties.
+		/// Connects newSite with polygons this edge is border of but does not remove oldSite from polygons.
 		/// </summary>
 		/// <param name="oldSite"></param>
 		/// <param name="newSite"></param>
@@ -38,9 +71,11 @@ namespace AtomosZ.Voronoi
 				end.connectedEdges.Add(this);
 			}
 
-			foreach(var polygon in polygons)
+			foreach (var polygon in polygons)
+			{
 				if (!polygon.corners.Contains(newSite))
-				VoronoiHelper.Associate(polygon, newSite);
+					VoronoiHelper.Associate(polygon, newSite);
+			}
 		}
 	}
 
@@ -84,16 +119,5 @@ namespace AtomosZ.Voronoi
 				return end;
 			return start;
 		}
-
-
-		//public void ReplaceSite(TSite oldSite, TSite newSite)
-		//{
-		//	if (!Contains(oldSite))
-		//		throw new System.Exception("This edge does not contain input oldSite");
-		//	if (start == oldSite)
-		//		start = newSite;
-		//	else
-		//		end = newSite;
-		//}
 	}
 }

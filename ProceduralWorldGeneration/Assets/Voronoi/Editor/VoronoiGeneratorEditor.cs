@@ -37,29 +37,24 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 			if (gen.vGraph != null && gen.viewVoronoiPolygons)
 			{
-				int halfOOB = 0, OOB = 0;
-
 				foreach (var edge in VoronoiGraph.uniqueVEdges)
 				{
-					if (VoronoiGenerator.IsInMapBounds(edge.start.position)
-						&& VoronoiGenerator.IsInMapBounds(edge.end.position))
+					if (edge.start.isOnBorder && edge.end.isOnBorder)
+						Handles.color = Color.green;
+					else if (!edge.start.isOOB && !edge.end.isOOB)
 					{
 						Handles.color = Color.blue;
 					}
-					else if (VoronoiGenerator.IsInMapBounds(edge.start.position)
-						|| VoronoiGenerator.IsInMapBounds(edge.end.position))
+					else if ((edge.start.isOOB ^ edge.end.isOOB) && !edge.start.isOnBorder && !edge.end.isOnBorder)
 					{
 						Handles.color = Color.yellow;
 						foreach (var intersection in VoronoiGenerator.FindMapBoundsIntersection(edge.start.position, edge.end.position))
 						{
 							Handles.CylinderHandleCap(0, intersection, Quaternion.identity, .5f, EventType.Repaint);
 						}
-
-						++halfOOB;
 					}
 					else
 					{
-						++OOB;
 						Handles.color = Color.red;
 						foreach (var intersection in VoronoiGenerator.FindMapBoundsIntersection(edge.start.position, edge.end.position))
 						{
@@ -70,14 +65,16 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 					Handles.DrawDottedLine(edge.start.position, edge.end.position, 2);
 				}
 
-				//Debug.Log("halfOOB: " + halfOOB + " OOB: " + OOB);
 
 				foreach (var corner in VoronoiGraph.uniqueCorners)
 				{
-					if (VoronoiGenerator.IsInMapBounds(corner.position))
-						Handles.color = Color.white;
-					else
+					if (corner.isOOB)
 						Handles.color = Color.red;
+					else if (corner.isOnBorder)
+						Handles.color = Color.green;
+					else
+						Handles.color = Color.white;
+
 					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .25f, EventType.Repaint);
 				}
 			}

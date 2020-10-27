@@ -52,6 +52,9 @@ namespace AtomosZ.Voronoi
 				polygons.Add(poly);
 			}
 
+			if (VoronoiGenerator.MergeNearCorners)
+				MergeNearCorners();
+
 			if (VoronoiGenerator.fixEdges)
 			{
 				FixCorners();
@@ -86,12 +89,29 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-
-		public static bool TryGetNearCorner(Vector2 position, out Corner closeCorner)
+		private void MergeNearCorners()
 		{
 			foreach (var corner in uniqueCorners)
 			{
-				if ((corner.position - position).sqrMagnitude < VoronoiGenerator.minSqrDistBetweenCorners)
+				if (corner.isInvalidated)
+					continue;
+				if (TryGetNearCorner(corner, out Corner closeCorner))
+				{
+					VoronoiHelper.MergeCorners(closeCorner, corner);
+					removeCorners.Add(closeCorner);
+				}
+			}
+		}
+
+		private bool TryGetNearCorner(Corner testCorner, out Corner closeCorner)
+		{
+			foreach (var corner in uniqueCorners)
+			{
+				if (corner == testCorner)
+					continue;
+				if (corner.isInvalidated)
+					continue;
+				if ((corner.position - testCorner.position).sqrMagnitude < VoronoiGenerator.minSqrDistBetweenCorners)
 				{
 					closeCorner = corner;
 					return true;
@@ -297,12 +317,26 @@ namespace AtomosZ.Voronoi
 		private void BisectEdge(VEdge edge, Vector2 intersectPoint, out Corner newCorner, out VEdge newEdge)
 		{
 			newCorner = new Corner(intersectPoint, cornerCount++);
+			newCorner.isOnBorder = true;
 			uniqueCorners.Add(newCorner);
 			Corner oobCorner = edge.start.isOOB ? edge.start : edge.end;
 			edge.ReplaceSite(oobCorner, newCorner);
 			newCorner.TryGetEdgeWith(oobCorner, out newEdge);
 		}
 
+		/// <summary>
+		/// Similar to other BisectEdge() but instead of creating a new corner at location
+		/// takes an existing corner and creates two edges with corner in center.
+		/// </summary>
+		/// <param name="edge">becomes completely INBOUND edge</param>
+		/// <param name="centerCorner"></param>
+		/// <param name="newEdge">new, compeletely OOB edge</param>
+		private void BisectEdge(VEdge edge, Corner centerCorner, out VEdge newEdge)
+		{
+			Corner oobCorner = edge.start.isOOB ? edge.start : edge.end;
+			edge.ReplaceSite(oobCorner, centerCorner);
+			centerCorner.TryGetEdgeWith(oobCorner, out newEdge);
+		}
 
 		public static void RemoveCorner(Corner corner)
 		{

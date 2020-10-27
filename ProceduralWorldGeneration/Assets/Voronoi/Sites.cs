@@ -38,7 +38,13 @@ namespace AtomosZ.Voronoi
 		public DelaunayTriangle delaunayTriangle = null;
 		public int num;
 		public bool isOOB = false;
+		public bool isOnBorder = false;
 		public bool isMapCorner = false;
+		/// <summary>
+		/// This corner is marked for deletion, likely because of a merger.
+		/// </summary>
+		public bool isInvalidated = false;
+
 
 		public Corner(DelaunayTriangle triangle, int cornerNum) : base(triangle.realCenter)
 		{
@@ -59,6 +65,7 @@ namespace AtomosZ.Voronoi
 			num = cornerNum;
 			isOOB = !VoronoiGenerator.IsInMapBounds(position);
 			isMapCorner = mapCorner;
+			isOnBorder = isMapCorner;
 		}
 
 
@@ -72,6 +79,10 @@ namespace AtomosZ.Voronoi
 		/// <returns></returns>
 		public bool TryGetEdgeWith(Corner other, out VEdge sharedEdge)
 		{
+			if (other == this)
+			{
+				throw new System.Exception("Trying to find shared edge between the same corner");
+			}
 			foreach (VEdge edge in connectedEdges)
 			{
 				if (other.connectedEdges.Contains(edge))
@@ -127,7 +138,7 @@ namespace AtomosZ.Voronoi
 		public void RemoveFrom(Polygon polygon)
 		{
 			foreach (var edge in GetConnectedEdgesIn(polygon))
-				edge.polygons.Remove(polygon);
+				edge.Remove(polygon);
 			polygons.Remove(polygon);
 		}
 	}

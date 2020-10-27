@@ -13,11 +13,14 @@ namespace AtomosZ.Voronoi
 		public Centroid centroid;
 		public List<Corner> corners = new List<Corner>();
 		/// <summary>
-		/// Edges that seperate polygons
+		/// Edges that seperate polygons.
 		/// </summary>
 		public List<VEdge> voronoiEdges = new List<VEdge>();
 		public List<Corner> oobCorners = new List<Corner>();
-
+		/// <summary>
+		/// Polygon has at least one corner on a map border.
+		/// </summary>
+		public bool isOnBorder;
 		public bool isInvalid = false;
 
 
@@ -45,11 +48,9 @@ namespace AtomosZ.Voronoi
 		{
 			foreach (var dTriangle in centroid.dTriangles)
 			{
-				if (dTriangle.isInvalidated)
+				if (dTriangle.isInvalidated) // this can't happen at this point....
 					continue;
 				var corner = dTriangle.GetCorner();
-				if (corners.Contains(corner)) // corners get merged
-					continue;
 				VoronoiHelper.Associate(this, corner);
 
 				foreach (var tri in centroid.dTriangles)
@@ -59,15 +60,11 @@ namespace AtomosZ.Voronoi
 
 					if (dTriangle.SharesEdgeWith(tri))
 					{
-						if (!corner.TryGetEdgeWith(tri.GetCorner(), out VEdge vEdge))
-						{ // a new edge was created
-							VoronoiHelper.Associate(this, vEdge);
-						}
-						else if (!voronoiEdges.Contains(vEdge))
+						corner.TryGetEdgeWith(tri.GetCorner(), out VEdge vEdge);
+						if (!voronoiEdges.Contains(vEdge))
 						{
 							VoronoiHelper.Associate(this, vEdge);
 						}
-
 					}
 				}
 			}
@@ -84,6 +81,8 @@ namespace AtomosZ.Voronoi
 			isInvalid = true;
 			foreach (var corner in corners)
 				corner.polygons.Remove(this);
+			foreach (var edge in voronoiEdges)
+				edge.Remove(this);
 			corners = null;
 			voronoiEdges = null;
 			VoronoiGraph.invalidatedPolygons.Add(this);
@@ -139,62 +138,64 @@ namespace AtomosZ.Voronoi
 
 			if (corner == null)
 			{
-				if (!VoronoiGraph.TryGetNearCorner(realCenter, out corner))
+				// check if this corner is close to a border/map corner
+				corner = new Corner(this, VoronoiGraph.cornerCount++);
+				VoronoiGraph.uniqueCorners.Add(corner);
+				if (!corner.isOOB)
 				{
-					corner = new Corner(this, VoronoiGraph.cornerCount++);
-					VoronoiGraph.uniqueCorners.Add(corner);
-					if (!corner.isOOB)
+					bool isCloseToTop = VoronoiGenerator.topRight.y - realCenter.y < VoronoiGenerator.minDistCornerAndBorder;
+					bool isCloseToRight = VoronoiGenerator.topRight.x - realCenter.x < VoronoiGenerator.minDistCornerAndBorder;
+					bool isCloseToLeft = realCenter.x - VoronoiGenerator.bottomLeft.x < VoronoiGenerator.minDistCornerAndBorder;
+					bool isCloseToBottom = realCenter.y - VoronoiGenerator.bottomLeft.y < VoronoiGenerator.minDistCornerAndBorder;
+					if (isCloseToTop)
 					{
-						bool isCloseToTop = VoronoiGenerator.topRight.y - realCenter.y < VoronoiGenerator.minDistCornerAndBorder;
-						bool isCloseToRight = VoronoiGenerator.topRight.x - realCenter.x < VoronoiGenerator.minDistCornerAndBorder;
-						bool isCloseToLeft = realCenter.x - VoronoiGenerator.bottomLeft.x < VoronoiGenerator.minDistCornerAndBorder;
-						bool isCloseToBottom = realCenter.y - VoronoiGenerator.bottomLeft.y < VoronoiGenerator.minDistCornerAndBorder;
-						if (isCloseToTop)
+						if (isCloseToRight)
 						{
-							if (isCloseToRight)
-							{
-								VoronoiGraph.uniqueCorners.Remove(corner);
-								--VoronoiGraph.cornerCount;
-								corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopRightCornerByte];
-							}
-							else if (isCloseToLeft)
-							{
-								VoronoiGraph.uniqueCorners.Remove(corner);
-								--VoronoiGraph.cornerCount;
-								corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopLeftCornerByte];
-							}
-							else
-							{
-								corner.position.y = VoronoiGenerator.topRight.y;
-							}
-						}
-						else if (isCloseToBottom)
-						{
-							if (isCloseToRight)
-							{
-								VoronoiGraph.uniqueCorners.Remove(corner);
-								--VoronoiGraph.cornerCount;
-								corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomRightCornerByte];
-							}
-							else if (isCloseToLeft)
-							{
-								VoronoiGraph.uniqueCorners.Remove(corner);
-								--VoronoiGraph.cornerCount;
-								corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomLeftCornerByte];
-							}
-							else
-							{
-								corner.position.y = VoronoiGenerator.bottomRight.y;
-							}
-						}
-						else if (isCloseToRight)
-						{
-							corner.position.x = VoronoiGenerator.bottomRight.x;
+							VoronoiGraph.uniqueCorners.Remove(corner);
+							--VoronoiGraph.cornerCount;
+							corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopRightCornerByte];
 						}
 						else if (isCloseToLeft)
 						{
-							corner.position.x = VoronoiGenerator.bottomLeft.x;
+							VoronoiGraph.uniqueCorners.Remove(corner);
+							--VoronoiGraph.cornerCount;
+							corner = VoronoiGraph.mapCorners[VoronoiGenerator.TopLeftCornerByte];
 						}
+						else
+						{
+							corner.position.y = VoronoiGenerator.topRight.y;
+							corner.isOnBorder = true;
+						}
+					}
+					else if (isCloseToBottom)
+					{
+						if (isCloseToRight)
+						{
+							VoronoiGraph.uniqueCorners.Remove(corner);
+							--VoronoiGraph.cornerCount;
+							corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomRightCornerByte];
+						}
+						else if (isCloseToLeft)
+						{
+							VoronoiGraph.uniqueCorners.Remove(corner);
+							--VoronoiGraph.cornerCount;
+							corner = VoronoiGraph.mapCorners[VoronoiGenerator.BottomLeftCornerByte];
+						}
+						else
+						{
+							corner.position.y = VoronoiGenerator.bottomRight.y;
+							corner.isOnBorder = true;
+						}
+					}
+					else if (isCloseToRight)
+					{
+						corner.position.x = VoronoiGenerator.bottomRight.x;
+						corner.isOnBorder = true;
+					}
+					else if (isCloseToLeft)
+					{
+						corner.position.x = VoronoiGenerator.bottomLeft.x;
+						corner.isOnBorder = true;
 					}
 				}
 			}
@@ -220,7 +221,7 @@ namespace AtomosZ.Voronoi
 		}
 
 		/// <summary>
-		/// Returns any edges that have not been found yet.
+		/// Returns any edges that have not been found yet (i.e. new edges).
 		/// </summary>
 		public List<DEdge> CalculateEdges()
 		{
