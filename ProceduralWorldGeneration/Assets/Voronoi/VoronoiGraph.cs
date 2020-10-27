@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using AtomosZ.Tutorials.Voronoi;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
@@ -124,59 +123,30 @@ namespace AtomosZ.Voronoi
 
 		private void FixCorners()
 		{
+			Polygon currentPolygon = null;
+			Corner lastCorner = null;
+			bool found = false;
+
 			foreach (var polygon in polygons)
 			{
 				if (polygon.isInvalid || polygon.oobCorners.Count == 0)
 					continue;
-				// find polygons that are cutting off a map edge and
-				// move a corner to the map corner to get the polygon nice and snug
+
 				foreach (var edge in polygon.voronoiEdges)
 				{
-					if (edge.polygons.Count != 1)
-						continue; // by necessity, map corner enclosing edges have only one polygon
-
 					if (!(edge.start.isOOB ^ edge.end.isOOB))
 						continue; // edge completely OOB || edge is completely inbounds, therefore uninteresting to us
 
-					if (edge.start.isMapCorner || edge.end.isMapCorner)
-						continue; // make sure we only change this edge once - may be redundant
-
-					if (!VoronoiGenerator.TryGetClosestCorner(edge, out byte cornerByte))
-						continue;
-
-					Corner mapCorner = mapCorners[cornerByte];
-					Corner oobCorner = edge.start.isOOB ? edge.start : edge.end;
-					Corner insideCorner = edge.start.isOOB ? edge.end : edge.start;
-
-					// replace in bounds corner with mapCorner
-					for (int i = insideCorner.connectedEdges.Count - 1; i >= 0; --i)
-					{
-						var modifiedEdge = insideCorner.connectedEdges[i];
-						modifiedEdge.ReplaceSite(insideCorner, mapCorner);
-					}
-
-					foreach (var movedPolygon in insideCorner.polygons)
-					{
-						VoronoiHelper.Associate(movedPolygon, mapCorner);
-						movedPolygon.corners.Remove(insideCorner);
-					}
-
-					RemoveCorner(insideCorner);
-
-					break; // have to break because we made an addition to the edge list. Should be finished here anyway.
-				}
-			}
-
-			// start at corner and choose a polygon
-			Polygon currentPolygon = null;
-			Corner lastCorner = null;
-			bool found = false;
-			foreach (var mapCorner in mapCorners)
-			{
-				foreach (var polygon in mapCorner.Value.polygons)
-				{
 					currentPolygon = polygon;
-					lastCorner = mapCorner.Value;
+					lastCorner = edge.start.isOOB ? edge.end : edge.start;
+					if (!lastCorner.isOnBorder)
+					{
+						// create a new on border corner to start on
+						VoronoiGenerator.TryGetFirstMapBoundsIntersection(edge.start.position, edge.end.position, out Vector2 intersectPoint);
+						BisectEdge(edge, intersectPoint, out Corner newCorner, out VEdge newEdge);
+						lastCorner = newCorner;
+					}
+
 					found = true;
 					break;
 				}
@@ -185,33 +155,132 @@ namespace AtomosZ.Voronoi
 					break;
 			}
 
-			if (currentPolygon == null)
-				throw new System.Exception("Could not find a valid map corner with polygons");
-
+			List<Polygon> visited = new List<Polygon>();
 			Corner firstCorner = lastCorner;
-			while (true)
+			VEdge last = null;
+			while (found)
 			{
+				VEdge sharedEdge = null;
+				visited.Add(currentPolygon);
 				// find other edge that intersects map border
-				if (!VoronoiGenerator.TryGetBoundsIntersection(currentPolygon, out Dictionary<VEdge, Vector2> intersections)
-					|| intersections.Count != 1)
+				if (!VoronoiGenerator.TryGetBoundsIntersection(currentPolygon, out Dictionary<VEdge, Vector2> intersections))
 				{
-					if (currentPolygon.corners.Any(corner => corner.isMapCorner))
-					{ // border done -> go to next corner
-						Corner mapCorner = currentPolygon.corners.FirstOrDefault(corner => corner.isMapCorner);
+					// if no intersections probably means that corners have already been corrected.
+					// find other border corner and move on
+					Debug.Log("No intersections here");
+					found = false;
+					foreach (var otherCorner in currentPolygon.corners)
+					{
+						if (otherCorner == lastCorner)
+							continue;
+						if (otherCorner.isOnBorder)
+						{
+							Debug.Log("\tfound border corner");
+							if (!lastCorner.TryGetEdgeWith(otherCorner, out VEdge newBorderEdge))
+								VoronoiHelper.Associate(currentPolygon, newBorderEdge);
+							else
+								Debug.Log("edge already existed?");
+							if (newBorderEdge == last)
+								Debug.LogError("WTF!");
+							found = true;
+							sharedEdge = null;
+							foreach (var edge in otherCorner.connectedEdges)
+								if (edge.Contains(currentPolygon) && edge.GetPolygonCount() > 1)
+									sharedEdge = edge;
+							if (sharedEdge == null)
+								Debug.Log("Oh shit");
+							lastCorner = otherCorner;
+							break;
+						}
+					}
 
-						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge);
-						VoronoiHelper.Associate(currentPolygon, newBorderEdge);
-						lastCorner = mapCorner;
+					if (!found)
+					{
+						Debug.Log("\tthis polygon is probably only connected to border by one corner");
+						foreach (var edge in currentPolygon.voronoiEdges)
+						{
+							if (edge.GetPolygonCount() == 1)
+							{
+								Debug.Log("We have a corner polygon!");
+								// get corner that's closest to mapCorner
+								Corner closestCorner = VoronoiGenerator.GetClosestCornerToMapCorner(currentPolygon, out Corner mapCorner);
+								// merge corner with mapCorner
+								for (int i = closestCorner.connectedEdges.Count - 1; i >= 0; --i)
+									closestCorner.connectedEdges[i].ReplaceSite(closestCorner, mapCorner);
+
+								closestCorner.isInvalidated = true;
+								removeCorners.Add(closestCorner);
+
+								sharedEdge = null;
+								foreach (var otherEdge in mapCorner.connectedEdges)
+									if (otherEdge.Contains(currentPolygon) && otherEdge.GetPolygonCount() > 1)
+										sharedEdge = otherEdge;
+								if (sharedEdge == null)
+									Debug.Log("Oh shit");
+								lastCorner = mapCorner;
+								break;
+							}
+						}
+					}
+				}
+				else if (intersections.Count >= 2)
+				{
+					if (!TryGetCornerCutterEdge(currentPolygon, out VEdge cornerCutterEdge, out byte cornerByte))
+					{
+						Debug.Log("Special case corner polygon");
+						// get closest map corner
+						float closestSqrDist = float.MaxValue;
+						Corner mapCorner = null;
+						foreach (var kvp in mapCorners)
+						{
+							float dist = (currentPolygon.centroid.position - kvp.Value.position).sqrMagnitude;
+							if (dist < closestSqrDist)
+							{
+								closestSqrDist = dist;
+								mapCorner = kvp.Value;
+							}
+						}
+
+						VEdge cornerCutEdge = null;
+						VEdge otherEdge = null;
+						Vector2 intersectPoint = Vector2.negativeInfinity;
+						foreach (var vv in intersections)
+						{
+							if (vv.Key.start.isOnBorder || vv.Key.end.isOnBorder)
+							{
+								cornerCutEdge = vv.Key;
+							}
+							else
+							{
+								otherEdge = vv.Key;
+								intersectPoint = vv.Value;
+							}
+						}
+
+						if (cornerCutEdge == null)
+						{
+							Debug.Log("Starting on corner cut?");
+							break;
+						}
+						else
+						{
+							// create new edge to mapCorner and add to polygon
+							BisectEdge(cornerCutEdge, mapCorner, out VEdge newBorderEdge);
+							// create new corner at intersection point (non-corner-cutter) and attach to mapCorner
+							BisectEdge(otherEdge, intersectPoint, out Corner newCorner, out VEdge newEdge);
+
+							mapCorner.TryGetEdgeWith(newCorner, out VEdge newOtherBorderEdge);
+							VoronoiHelper.Associate(currentPolygon, newBorderEdge);
+							VoronoiHelper.Associate(currentPolygon, newOtherBorderEdge);
+
+							sharedEdge = otherEdge;
+							lastCorner = newCorner;
+						}
 					}
 					else
 					{
-						// this should be a polygon with an corner-cutting edge
-						if (!TryGetCornerCutterEdge(currentPolygon, out VEdge cornerCutterEdge, out byte cornerByte))
-						{
-							throw new System.Exception("Invalid attempt to get a corner cutter edge");
-						}
+						Debug.Log("Corner cutter!");
 
-						// find other edge intersection
 						VEdge otherEdge = null;
 						Vector2 intersectionPoint = Vector2.negativeInfinity;
 						foreach (var edge in intersections)
@@ -228,8 +297,6 @@ namespace AtomosZ.Voronoi
 						Corner mapCorner = mapCorners[cornerByte];
 						lastCorner.TryGetEdgeWith(mapCorner, out VEdge newBorderEdge1);
 						mapCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge2);
-						VoronoiHelper.Associate(currentPolygon, mapCorner);
-						VoronoiHelper.Associate(currentPolygon, newCorner);
 
 						VoronoiHelper.Associate(currentPolygon, newBorderEdge1);
 						VoronoiHelper.Associate(currentPolygon, newBorderEdge2);
@@ -237,52 +304,100 @@ namespace AtomosZ.Voronoi
 						currentPolygon.voronoiEdges.Remove(cornerCutterEdge);
 						uniqueVEdges.Remove(cornerCutterEdge);
 
-						lastCorner = newCorner; // this causes an infinite loop!
+						sharedEdge = otherEdge;
+						lastCorner = newCorner;
 					}
 				}
 				else
 				{
-					VEdge edge = null;
+					// this may be a corner
+					VEdge otherEdge = null;
 					Vector2 intersectPoint = Vector2.zero;
 					foreach (var vv in intersections)
 					{
-						edge = vv.Key;
+						otherEdge = vv.Key;
 						intersectPoint = vv.Value;
 					}
 
-					// create new Corner at intersect point and bisect edge
-					BisectEdge(edge, intersectPoint, out Corner newCorner, out VEdge newOOBEdge);
-					VoronoiHelper.Associate(currentPolygon, newCorner);
-
-					// connect first corner to new point
-					lastCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge);
-					VoronoiHelper.Associate(currentPolygon, newBorderEdge);
-					lastCorner = newCorner;
-				}
-
-				// mark all remaining oob corners and edges in polygon to removed
-				foreach (var corner in currentPolygon.corners)
-					if (corner.isOOB)
-						removeCorners.Add(corner);
-
-				if (firstCorner == lastCorner)
-				{ // done!
-					break;
-				}
-
-				// move to next polygon connected to bisected edge
-				found = false;
-				foreach (var polygon in lastCorner.polygons)
-				{
-					if (polygon != currentPolygon)
+					if (otherEdge.GetPolygonCount() == 1)
 					{
-						found = true;
-						currentPolygon = polygon;
-						break;
+						Debug.Log("this is likely a special corner case");
+						// get closest mapCorner
+						Corner closestCorner = VoronoiGenerator.GetClosestCornerToMapCorner(currentPolygon, out Corner mapCorner);
+						BisectEdge(otherEdge, mapCorner, out VEdge oobEdge);
+						lastCorner.TryGetEdgeWith(mapCorner, out VEdge borderEdge);
+						VoronoiHelper.Associate(currentPolygon, borderEdge);
+
+						Corner otherCorner = otherEdge.GetOppositeSite(mapCorner);
+						if (!otherCorner.isOnBorder)
+						{
+							// get border that is perpendicular to borderEdge and move it to the border
+							Vector2 dir = (mapCorner.position - lastCorner.position).normalized;
+							Debug.Log(dir);
+							Vector2 perp = Vector2.Perpendicular(dir);
+							Debug.Log(perp);
+							if (!Mathf.Approximately(perp.y, 0))
+							{ // new edge is vertical
+								if (dir.x > 0) // we're traveling right towards the mapCorner
+									otherCorner.position.x = VoronoiGenerator.topRight.x; // so clamp to right border
+								else // we're travelling left towards mapCorner
+									otherCorner.position.x = VoronoiGenerator.topLeft.x; // so clamp to left border
+							}
+							else
+							{ // new edge is horizontal
+								if (dir.y > 0) // we're traveling up towards mapCorner
+									otherCorner.position.y = VoronoiGenerator.topRight.y; // so clamp to top border
+								else // travelling down towards mapCorner
+									otherCorner.position.y = VoronoiGenerator.bottomRight.y;
+							}
+
+							otherCorner.isOnBorder = true;
+						}
+
+						lastCorner = otherCorner;
+
+						sharedEdge = null;
+						foreach (var edge in lastCorner.connectedEdges)
+							if (edge.Contains(currentPolygon) && edge.GetPolygonCount() > 1)
+								sharedEdge = edge;
+						if (sharedEdge == null)
+							Debug.Log("Oh shit");
+					}
+					else
+					{
+						// create new corner at intersection and connect to lastCorner
+						Debug.Log("regular border polygon");
+
+						// create new Corner at intersect point and bisect edge
+						BisectEdge(otherEdge, intersectPoint, out Corner newCorner, out VEdge newOOBEdge);
+
+						// connect first corner to new point
+						lastCorner.TryGetEdgeWith(newCorner, out VEdge newBorderEdge);
+						lastCorner = newCorner;
+						last = newBorderEdge;
+						sharedEdge = otherEdge;
 					}
 				}
+
+
+				if (lastCorner == firstCorner)
+					break; // we've come full circle
+
+				found = false;
+				foreach (var poly in sharedEdge.GetPolygons())
+				{
+					if (poly == currentPolygon || visited.Contains(poly))
+						continue;
+					found = true;
+					currentPolygon = poly;
+				}
+
+				if (!found)
+					Debug.LogWarning("border fixing ended early");
+				// if found = false something probably has gone wrong
 			}
 		}
+
 
 		private bool TryGetCornerCutterEdge(Polygon polygon,
 			out VEdge cornerCutterEdge, out byte cornerByte)
@@ -311,7 +426,7 @@ namespace AtomosZ.Voronoi
 		/// <para>newEdge: new, compeletely OOB edge.</para>
 		/// </summary>
 		/// <param name="edge">becomes completely INBOUND edge</param>
-		/// <param name="intersectPoint">where new corner is created</param>
+		/// <param name="intersectPoint">point on map border where new corner is created</param>
 		/// <param name="newCorner"></param>
 		/// <param name="newEdge">new, compeletely OOB edge</param>
 		private void BisectEdge(VEdge edge, Vector2 intersectPoint, out Corner newCorner, out VEdge newEdge)
