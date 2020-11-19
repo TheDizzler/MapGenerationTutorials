@@ -262,7 +262,6 @@ namespace AtomosZ.Tutorials.Voronoi
 
 			if (!TryGetFirstMapBoundsIntersection(lineStart, lineEnd, out Vector2 intersectPoint))
 			{
-				//errorEdge = edge;
 				return false;
 			}
 

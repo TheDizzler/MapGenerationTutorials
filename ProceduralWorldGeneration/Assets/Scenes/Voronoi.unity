@@ -281,7 +281,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   useRandomSeed: 0
-  randomSeed: 637384585854634207
+  randomSeed: 637404427149774256
   mapWidth: 30
   mapHeight: 30
   regionAmount: 66
@@ -295,7 +295,7 @@ MonoBehaviour:
     type: 3}
   regionHolder: {fileID: 1261111803}
   regions: []
-  mergeNearCorners: 1
+  mergeNearCorners: 0
   clampToMapBounds: 1
   createRegions: 0
 --- !u!1 &1261111802
