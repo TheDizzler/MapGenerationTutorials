@@ -281,13 +281,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   useRandomSeed: 0
-  randomSeed: 637421845385189985
+  randomSeed: 637421954046167189
   mapWidth: 30
   mapHeight: 30
   regionAmount: 66
   minSqrDistBtwnSites: 2.1
   minDistBtwnSiteAndBorder: 0.98
-  minDistanceBetweenCornerAndBorder: 0.26
+  minDistBtwnCornerAndBorder: 0.26
   minEdgeLengthToMerge: 0.29
   viewDelaunayCircles: 0
   viewDelaunayTriangles: 0
@@ -298,7 +298,7 @@ MonoBehaviour:
   regionHolder: {fileID: 1261111803}
   regions: []
   mergeNearCorners: 0
-  clampToMapBounds: 0
+  clampToMapBounds: 1
   createRegions: 0
 --- !u!1 &1261111802
 GameObject:
