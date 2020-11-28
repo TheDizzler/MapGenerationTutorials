@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using AtomosZ.Tutorials.Voronoi;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -71,13 +70,31 @@ namespace AtomosZ.Voronoi
 
 		/// <summary>
 		/// Check if a VEdge already exists between the two corners.
-		/// If the edge doesn't already exist it creates it.
+		/// If the edge doesn't already exist it creates it and adds it to uniqueVEdges list.
 		/// Returns true if edge already existed, false if it was created.
 		/// </summary>
 		/// <param name="other"></param>
 		/// <param name="sharedEdge"></param>
 		/// <returns></returns>
 		public bool TryGetEdgeWith(Corner other, out VEdge sharedEdge)
+		{
+			sharedEdge = FindSharedEdgeWith(other);
+			if (sharedEdge != null)
+			{
+				return true;
+			}
+
+			sharedEdge = new VEdge(this, other);
+			VoronoiGraph.uniqueVEdges.Add(sharedEdge);
+			return false;
+		}
+
+		/// <summary>
+		/// Returns null if none found.
+		/// </summary>
+		/// <param name="other"></param>
+		/// <returns></returns>
+		public VEdge FindSharedEdgeWith(Corner other)
 		{
 			if (other == this)
 			{
@@ -87,14 +104,11 @@ namespace AtomosZ.Voronoi
 			{
 				if (other.connectedEdges.Contains(edge))
 				{
-					sharedEdge = edge;
-					return true;
+					return edge;
 				}
 			}
 
-			sharedEdge = new VEdge(this, other);
-			VoronoiGraph.uniqueVEdges.Add(sharedEdge);
-			return false;
+			return null;
 		}
 
 		/// <summary>

@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
-using AtomosZ.Voronoi;
 using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 using Random = System.Random;
 
 
-namespace AtomosZ.Tutorials.Voronoi
+namespace AtomosZ.Voronoi
 {
 	public class VoronoiGenerator : MonoBehaviour
 	{
@@ -24,7 +23,6 @@ namespace AtomosZ.Tutorials.Voronoi
 		};
 
 		public static Random rng;
-		public static bool fixEdges;
 		public static float minSqrDistBetweenCorners;
 		public static float minDistCornerAndBorder;
 		public static bool MergeNearCorners;
@@ -33,6 +31,9 @@ namespace AtomosZ.Tutorials.Voronoi
 		public static Vector2 topRight;
 		public static Vector2 bottomRight;
 		public static Vector2 bottomLeft;
+
+		public static List<VEdge> debugEdges;
+		public static List<Corner> debugCorners;
 
 		private static Rect mapBounds;
 		private static float mapBoundsTolerance = .00001f;
@@ -47,9 +48,13 @@ namespace AtomosZ.Tutorials.Voronoi
 		[Range(0, 256)]
 		public int regionAmount = 50;
 		[Range(.0f, 15.00f)]
-		public float minSqrDistanceBetweenSites = .5f;
+		public float minSqrDistBtwnSites = .5f;
+		[Range(.0f, 5.00f)]
+		public float minDistBtwnSiteAndBorder = .5f;
 		[Range(.05f, 5f)]
 		public float minDistanceBetweenCornerAndBorder = .25f;
+		[Range(0f, 1f)]
+		public float minEdgeLengthToMerge = .05f;
 
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
@@ -66,14 +71,15 @@ namespace AtomosZ.Tutorials.Voronoi
 		public bool clampToMapBounds = true;
 		public bool createRegions = true;
 
-		
+
 
 		public void GenerateMap()
 		{
+			debugEdges = new List<VEdge>();
+			debugCorners = new List<Corner>();
 			MergeNearCorners = mergeNearCorners;
-			fixEdges = clampToMapBounds;
 
-			minSqrDistBetweenCorners = minSqrDistanceBetweenSites;
+			minSqrDistBetweenCorners = minSqrDistBtwnSites;
 			minDistCornerAndBorder = minDistanceBetweenCornerAndBorder;
 
 			if (useRandomSeed)
@@ -97,7 +103,9 @@ namespace AtomosZ.Tutorials.Voronoi
 			int retryAttempts = 0;
 			for (int i = 0; i < regionAmount; i++)
 			{
-				Vector2 site = new Vector2((float)(rng.NextDouble() * mapHeight), (float)(rng.NextDouble() * mapWidth));
+				Vector2 site = new Vector2(
+					(float)(minDistBtwnSiteAndBorder + rng.NextDouble() * (mapHeight - minDistBtwnSiteAndBorder * 2)),
+					(float)(minDistBtwnSiteAndBorder + rng.NextDouble() * (mapWidth - minDistBtwnSiteAndBorder * 2)));
 				if (IsTooNear(sites, site))
 				{   // try again
 
@@ -105,7 +113,7 @@ namespace AtomosZ.Tutorials.Voronoi
 					if (retryAttempts > 25)
 					{
 						Debug.Log("Unable to place new site within exceptable distance parameters."
-							+ " Aborting creating new sites. Created " + i + " out of " + regionAmount);
+							+ "\nAborting creating new sites. Created " + i + " out of " + regionAmount);
 						break;
 					}
 
@@ -116,12 +124,14 @@ namespace AtomosZ.Tutorials.Voronoi
 			}
 
 			dGraph = new DelaunayGraph(sites);
-			vGraph = new VoronoiGraph(dGraph);
+			vGraph = new VoronoiGraph(this, dGraph);
 
 			CreateRegions();
 		}
 
-
+		/// <summary>
+		/// NOT TESTED!
+		/// </summary>
 		public void AddPoint()
 		{
 			if (dGraph == null)
@@ -239,12 +249,26 @@ namespace AtomosZ.Tutorials.Voronoi
 			return closestCorner;
 		}
 
+		[System.Obsolete]
 		public static bool IsOnBorder(Corner corner)
 		{
 			return Mathf.Approximately(corner.position.x, mapBounds.xMin)
 				|| Mathf.Approximately(corner.position.x, mapBounds.xMax)
 				|| Mathf.Approximately(corner.position.y, mapBounds.yMin)
 				|| Mathf.Approximately(corner.position.y, mapBounds.yMax);
+		}
+
+		public static MapSide GetOnBorderMapSide(Corner corner)
+		{
+			if (Mathf.Approximately(corner.position.x, mapBounds.xMin))
+				return MapSide.Left;
+			if (Mathf.Approximately(corner.position.x, mapBounds.xMax))
+				return MapSide.Right;
+			if (Mathf.Approximately(corner.position.y, mapBounds.yMin))
+				return MapSide.Bottom;
+			if (Mathf.Approximately(corner.position.y, mapBounds.yMax))
+				return MapSide.Top;
+			return MapSide.Inside;
 		}
 
 		/// <summary>
@@ -387,6 +411,7 @@ namespace AtomosZ.Tutorials.Voronoi
 			return intersections;
 		}
 
+
 		public static bool TryGetFirstMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd, out Vector2 intersectPoint)
 		{
 			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out intersectPoint))
@@ -510,7 +535,7 @@ namespace AtomosZ.Tutorials.Voronoi
 				Vector2 check = sites[i].position;
 				if (check == site)
 					continue;
-				if ((check - site).sqrMagnitude < minSqrDistanceBetweenSites)
+				if ((check - site).sqrMagnitude < minSqrDistBtwnSites)
 					return true;
 			}
 
@@ -524,7 +549,7 @@ namespace AtomosZ.Tutorials.Voronoi
 				Vector2 check = sites[i];
 				if (check == site)
 					continue;
-				if ((check - site).sqrMagnitude < minSqrDistanceBetweenSites)
+				if ((check - site).sqrMagnitude < minSqrDistBtwnSites)
 					return true;
 			}
 
@@ -552,6 +577,7 @@ namespace AtomosZ.Tutorials.Voronoi
 			foreach (var rem in remove)
 				centroids.Remove(rem);
 		}
+
 
 		private void OnDrawGizmos()
 		{
@@ -594,7 +620,6 @@ namespace AtomosZ.Tutorials.Voronoi
 
 			if (vGraph != null && viewVoronoiPolygons)
 			{
-				// draw polygon corners
 
 			}
 

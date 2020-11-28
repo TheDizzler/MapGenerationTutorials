@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -76,6 +77,28 @@ namespace AtomosZ.Voronoi
 				if (!polygon.corners.Contains(newSite))
 					VoronoiHelper.Associate(polygon, newSite);
 			}
+		}
+
+		public bool SharesCorner(VEdge lastEdge, out Corner sharedCorner)
+		{
+			sharedCorner = null;
+			if (lastEdge.Contains(start))
+				sharedCorner = start;
+			else if (lastEdge.Contains(end))
+				sharedCorner = end;
+
+			return sharedCorner != null;
+		}
+
+		public bool HasCornerOnBorder(out List<Corner> borderCorners)
+		{
+			borderCorners = new List<Corner>();
+			if (start.isOnBorder)
+				borderCorners.Add(start);
+			if (end.isOnBorder)
+				borderCorners.Add(end);
+
+			return borderCorners.Count > 0;
 		}
 	}
 

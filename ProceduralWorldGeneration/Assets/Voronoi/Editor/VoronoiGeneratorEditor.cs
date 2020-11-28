@@ -1,8 +1,7 @@
-﻿using AtomosZ.Voronoi;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
-namespace AtomosZ.Tutorials.Voronoi.Editors
+namespace AtomosZ.Voronoi.Editors
 {
 	[CustomEditor(typeof(VoronoiGenerator))]
 	public class VoronoiGeneratorEditor : Editor
@@ -13,7 +12,9 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 			VoronoiGenerator gen = (VoronoiGenerator)target;
 			if (GUILayout.Button("Generate Voronoi"))
 			{
+				EditorTools.EditorUtils.ClearLogConsole();
 				gen.GenerateMap();
+				EditorUtility.SetDirty(target);
 			}
 
 			if (GUILayout.Button("AddPoint"))
@@ -37,6 +38,22 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 			if (gen.vGraph != null && gen.viewVoronoiPolygons)
 			{
+				//if (VoronoiGraph.boundCrossingEdges != null)
+				//{
+				//	Handles.color = new Color(1, .62f, .016f, 1);
+				//	for (int i = 0; i < VoronoiGraph.boundCrossingEdges[VoronoiGenerator.MapSide.Top].Count; ++i)
+				//	{
+				//		var edge = VoronoiGraph.boundCrossingEdges[VoronoiGenerator.MapSide.Top][i];
+				//		Vector2 nextPos;
+				//		if (i == VoronoiGraph.boundCrossingEdges[VoronoiGenerator.MapSide.Top].Count - 1)
+				//			nextPos = VoronoiGenerator.topRight;
+				//		else
+				//			nextPos = VoronoiGraph.boundCrossingEdges[VoronoiGenerator.MapSide.Top][i + 1].intersectPosition;
+				//		Handles.ArrowHandleCap(i, edge.intersectPosition, Quaternion.LookRotation(Vector3.right), Vector2.Distance(edge.intersectPosition, nextPos), EventType.Repaint);
+				//		Handles.Label((edge.intersectPosition + nextPos) / 2, "" + i);
+				//	}
+				//}
+
 				foreach (var edge in VoronoiGraph.uniqueVEdges)
 				{
 					if (edge.start.isOnBorder && edge.end.isOnBorder)
@@ -68,7 +85,9 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 				foreach (var corner in VoronoiGraph.uniqueCorners)
 				{
-					if (corner.isOOB)
+					if (corner.isInvalidated)
+						Handles.color = new Color(.5f, .5f, .5f, .5f);
+					else if (corner.isOOB)
 						Handles.color = Color.red;
 					else if (corner.isOnBorder)
 						Handles.color = Color.green;
@@ -77,6 +96,15 @@ namespace AtomosZ.Tutorials.Voronoi.Editors
 
 					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .25f, EventType.Repaint);
 				}
+
+				Handles.color = Color.magenta;
+				foreach (var edge in VoronoiGenerator.debugEdges)
+				{
+					Handles.DrawDottedLine(edge.start.position, edge.end.position, 1);
+				}
+
+				foreach (var corner in VoronoiGenerator.debugCorners)
+					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .375f, EventType.Repaint);
 			}
 		}
 	}
