@@ -52,7 +52,7 @@ namespace AtomosZ.Voronoi
 		[Range(.0f, 5.00f)]
 		public float minDistBtwnSiteAndBorder = .5f;
 		[Range(.05f, 5f)]
-		public float minDistanceBetweenCornerAndBorder = .25f;
+		public float minDistBtwnCornerAndBorder = .25f;
 		[Range(0f, 1f)]
 		public float minEdgeLengthToMerge = .05f;
 
@@ -80,7 +80,7 @@ namespace AtomosZ.Voronoi
 			MergeNearCorners = mergeNearCorners;
 
 			minSqrDistBetweenCorners = minSqrDistBtwnSites;
-			minDistCornerAndBorder = minDistanceBetweenCornerAndBorder;
+			minDistCornerAndBorder = minDistBtwnCornerAndBorder;
 
 			if (useRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();

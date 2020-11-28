@@ -8,6 +8,8 @@ namespace AtomosZ.Voronoi
 {
 	public class VoronoiGraph
 	{
+		public enum LogType { Normal, Warning, Error, Exception };
+
 		public static HashSet<Corner> uniqueCorners;
 		public static Dictionary<byte, Corner> mapCorners;
 		public static HashSet<VEdge> uniqueVEdges;
@@ -21,6 +23,9 @@ namespace AtomosZ.Voronoi
 		public List<Polygon> polygons;
 		private List<Corner> removeCorners;
 		private VoronoiGenerator generator;
+		private int breakCount = 0;
+		private string logFilePath = Application.dataPath + @"\Voronoi\ErrorLogs\";
+		private List<string> logMsgs;
 
 
 		public VoronoiGraph(VoronoiGenerator vGen, DelaunayGraph dGraph)
@@ -125,8 +130,23 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
+		/// <summary>
+		/// Double corner cutting case seed: 637421845385189985
+		/// </summary>
 		private void ClampToMapBounds()
 		{
+			logMsgs = new List<string>();
+
+			logMsgs.Add("****** Error found on Seed: " + generator.randomSeed + "******");
+			logMsgs.Add("Map dimensions: " + generator.mapWidth + ", " + generator.mapHeight);
+			logMsgs.Add("Region amt: " + generator.regionAmount);
+			logMsgs.Add("MinSqrDistBtwnSites: " + generator.minSqrDistBtwnSites);
+			logMsgs.Add("MinDistBtwnSiteAndBorder: " + generator.minDistBtwnSiteAndBorder);
+			logMsgs.Add("MinDistBtwnCornerAndBorder: " + generator.minDistBtwnCornerAndBorder);
+			logMsgs.Add("MinEdgeLengthToMerge: " + generator.minEdgeLengthToMerge);
+			logMsgs.Add("Merge near corners: " + generator.mergeNearCorners);
+			logMsgs.Add("******************************************\n");
+
 			boundCrossingEdges = GetBoundCrossingEdges();
 			// Sort edges clockwise starting from top left
 			boundCrossingEdges[MapSide.Top].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x < e2.intersectPosition.x ? -1 : 1; });
@@ -148,12 +168,13 @@ namespace AtomosZ.Voronoi
 					}
 				}
 
-				Debug.Log("Fixing final corner");
+				Log("Fixing final corner");
 				if (FixCorner(lastCreatedBorderCorner, MapSide.Top) == null)
 					throw new Exception("See above logs");
 			}
 			catch (Exception ex)
 			{
+				System.IO.File.WriteAllLines(logFilePath + generator.randomSeed + ".txt", logMsgs);
 				Debug.LogException(ex);
 				generator.useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
 				return;
@@ -172,16 +193,16 @@ namespace AtomosZ.Voronoi
 				// make sure this position isn't already a corner
 				if (currentEV.isOnBorder)
 				{
-					Debug.Log("Found corner on border");
+					Log("Found corner on border");
 					if (!currentEV.edge.HasCornerOnBorder(out List<Corner> borderCorners))
 					{
-						Debug.LogError("\tborder corner mis-reported?");
+						Log("\tborder corner mis-reported?", LogType.Error);
 						return null;
 					}
 
 					if (borderCorners.Count > 1)
 					{
-						Debug.LogError("\tSPECIAL CASE: edge has more than one border corner.");
+						Log("\tSPECIAL CASE: edge has more than one border corner.", LogType.Error);
 						return null;
 					}
 
@@ -215,11 +236,11 @@ namespace AtomosZ.Voronoi
 			{
 				if (lastCreatedBorderCorner == null)
 				{
-					Debug.Log("oh so we're starting with a corner cutter, eh?");
+					Log("oh so we're starting with a corner cutter, eh?");
 					var secondEV = boundCrossingEdges[mapSide][1];
 					if (secondEV.isOnBorder)
 					{
-						Debug.LogWarning("Found corner on border");
+						Log("Found corner on border", LogType.Warning);
 						return null;
 					}
 
@@ -232,7 +253,7 @@ namespace AtomosZ.Voronoi
 				}
 				else
 				{
-					Debug.Log("Fixing a corner cutter");
+					Log("Fixing a corner cutter");
 					mapCorner.TryGetEdgeWith(lastCreatedBorderCorner, out VEdge noUseEdge);
 					boundCrossingEdges[mapSide].Remove(firstEV);
 					boundCrossingEdges[lastMapSide].Remove(lastEV);
@@ -242,10 +263,10 @@ namespace AtomosZ.Voronoi
 			}
 			else if (firstEdge.SharesCorner(lastEdge, out Corner sharedCorner))
 			{
-				Debug.Log("Simple MapCorner found");
+				Log("Simple MapCorner found");
 				if (sharedCorner.isOnBorder)
 				{
-					Debug.Log("\tFound corner on border");
+					Log("\tFound corner on border");
 					//return null;
 				}
 
@@ -253,7 +274,7 @@ namespace AtomosZ.Voronoi
 
 				if (lastCreatedBorderCorner == null)
 				{
-					Debug.Log("\tDid we just start?");
+					Log("\tDid we just start?");
 				}
 				else
 				{
@@ -267,7 +288,7 @@ namespace AtomosZ.Voronoi
 			}
 			else
 			{
-				Debug.Log("Complex MapCorner found");
+				Log("Complex MapCorner found");
 
 				Corner lastInCorner = lastEdge.start.isOOB ? lastEdge.end : lastEdge.start;
 				Corner currentInCorner = firstEdge.start.isOOB ? firstEdge.end : firstEdge.start;
@@ -275,11 +296,11 @@ namespace AtomosZ.Voronoi
 				VEdge inSharedEdge = currentInCorner.FindSharedEdgeWith(lastInCorner);
 				if (inSharedEdge != null)
 				{
-					Debug.Log("\tNot too complex");
+					Log("\tNot too complex");
 					// try find last intersection created on last mapSide
 					if (lastEdge.GetPolygonCount() > 1)
 					{   // if this number is greater than 1, we have issues
-						Debug.LogError("\tIlogical polygon count on corner edge: " + lastEdge.GetPolygonCount());
+						Log("\tIlogical polygon count on corner edge: " + lastEdge.GetPolygonCount(), LogType.Error);
 						//debugEdges.Add(firstEdge);
 						//debugEdges.Add(lastEdge);
 						debugEdges.Add(inSharedEdge);
@@ -288,7 +309,7 @@ namespace AtomosZ.Voronoi
 
 					if (lastEV.isOnBorder)
 					{
-						Debug.Log("\tlast corner before mapCorner is a border corner. Relevant?");
+						Log("\tlast corner before mapCorner is a border corner. Relevant?");
 						//	// merge border corner with mapCorner
 						//	VoronoiHelper.MergeCorners(lastInCorner, mapCorner);
 						//	return null;
@@ -301,7 +322,7 @@ namespace AtomosZ.Voronoi
 					//		(2) could bisect an edge that is already really short, creating a horrific spike
 					// Alternatively, we could do (3), either (1) or (2) depending on length of edge
 					bool edgeShort = Vector2.Distance(inSharedEdge.start.position, inSharedEdge.end.position) < generator.minEdgeLengthToMerge;
-					Debug.Log("Edge length: " + Vector2.Distance(inSharedEdge.start.position, inSharedEdge.end.position));
+					Log("Edge length: " + Vector2.Distance(inSharedEdge.start.position, inSharedEdge.end.position));
 					if (edgeShort)
 					{
 						// implementation of (1)
@@ -319,7 +340,7 @@ namespace AtomosZ.Voronoi
 
 					if (lastCreatedBorderCorner == null)
 					{
-						Debug.Log("\tDid we just start?");
+						Log("\tDid we just start?");
 					}
 					else
 					{
@@ -335,7 +356,7 @@ namespace AtomosZ.Voronoi
 				{
 					//if (!lastEV.isCornerCutter)
 					//{
-					//	Debug.LogWarning("\tFuck damn this could be trouble.");
+					//	Log("\tFuck damn this could be trouble.", LogType.Warning);
 					//	VoronoiGenerator.debugEdges.Add(lastEdge);
 					//	VoronoiGenerator.debugEdges.Add(firstEdge);
 					//	return null;
@@ -381,7 +402,7 @@ namespace AtomosZ.Voronoi
 				{ // check for on border end points
 					if (edge.start.isMapCorner || edge.end.isMapCorner)
 					{
-						Debug.LogWarning("Very rare case of edge end point is mapCorner. May be safe to ignore?");
+						Log("Very rare case of edge end point is mapCorner. May be safe to ignore?", LogType.Warning);
 						continue;
 					}
 
@@ -389,7 +410,8 @@ namespace AtomosZ.Voronoi
 					{
 						if (corners.Count != 1)
 						{
-							throw new Exception("SPECIAL CASE: Edge found with two border corners. This is a special case that must be addressed");
+							Log("SPECIAL CASE: Edge found with two border corners. This is a special case that must be addressed",
+								LogType.Exception);
 						}
 
 						Corner borderCorner = corners[0];
@@ -399,7 +421,7 @@ namespace AtomosZ.Voronoi
 						MapSide mapSide = GetOnBorderMapSide(borderCorner);
 						if (mapSide == MapSide.Inside)
 						{
-							throw new Exception("Corner reporting onBorder but is not.");
+							Log("Corner reporting onBorder but is not.", LogType.Exception);
 						}
 
 						crossingEdges[mapSide].Add(new BoundaryCrossingEdge(edge, borderCorner.position, true));
@@ -408,6 +430,25 @@ namespace AtomosZ.Voronoi
 			}
 
 			return crossingEdges;
+		}
+
+		private void Log(string msg, LogType logType = LogType.Normal)
+		{
+			logMsgs.Add(logType.ToString() + ": " + msg);
+			switch (logType)
+			{
+				case LogType.Normal:
+					Debug.Log(msg);
+					break;
+				case LogType.Warning:
+					Debug.LogWarning(msg);
+					break;
+				case LogType.Error:
+					Debug.LogError(msg);
+					break;
+				case LogType.Exception:
+					throw new Exception(msg);
+			}
 		}
 
 		public class BoundaryCrossingEdge
@@ -426,12 +467,12 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-		int breakCount = 0;
+
 		private bool DebugBreak(int countBeforeBreak = 2)
 		{
 			if (++breakCount >= countBeforeBreak)
 			{
-				Debug.LogWarning("Manual Break initiated");
+				Log("Manual Break initiated", LogType.Warning);
 				return true;
 			}
 
