@@ -306,13 +306,6 @@ namespace AtomosZ.Voronoi
 				{
 					Log("\tNot too complex");
 					// try find last intersection created on last mapSide
-					if (lastEdge.GetPolygonCount() > 1)
-					{   // if this number is greater than 1, we have issues
-						Log("\tIlogical polygon count on corner edge: " + lastEdge.GetPolygonCount(), LogType.Error);
-						debugEdges.Add(inSharedEdge);
-						return null;
-					}
-
 					if (lastBCE.isOnBorder)
 					{
 						Log("\tlast corner before mapCorner is a border corner. Relevant?");
