@@ -329,9 +329,16 @@ namespace AtomosZ.Voronoi
 					else
 					{
 						// implementation of (2)
-						BisectEdge(inSharedEdge, mapCorner, out VEdge newEdge);
-						RemoveEdge(lastEdge);
-						RemoveEdge(firstEdge);
+						if (inSharedEdge.Contains(mapCorner))
+						{
+							Log("No need to create new edge");
+						}
+						else
+						{
+							BisectEdge(inSharedEdge, mapCorner, out VEdge newEdge);
+							RemoveEdge(lastEdge);
+							RemoveEdge(firstEdge);
+						}
 					}
 
 
