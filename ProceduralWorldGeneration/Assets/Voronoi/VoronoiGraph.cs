@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 using static AtomosZ.Voronoi.VoronoiGenerator;
 
@@ -66,6 +65,22 @@ namespace AtomosZ.Voronoi
 			if (generator.clampToMapBounds)
 			{
 				ClampToMapBounds();
+
+				foreach (Corner corner in uniqueCorners)
+				{
+					if (corner.isInvalidated)
+					{
+						if (!removeCorners.Contains(corner))
+							removeCorners.Add(corner);
+						continue;
+					}
+
+					if (corner.isOOB)
+					{
+						removeCorners.Add(corner);
+
+					}
+				}
 			}
 
 			int culled = 0;
@@ -74,6 +89,7 @@ namespace AtomosZ.Voronoi
 				polygons.Remove(polygon);
 				++culled;
 			}
+
 
 			for (int i = removeCorners.Count - 1; i >= 0; --i)
 			{
@@ -105,7 +121,7 @@ namespace AtomosZ.Voronoi
 					continue;
 				if (TryGetNearCorner(corner, out Corner closeCorner))
 				{
-					VoronoiHelper.MergeCorners(closeCorner, corner);
+					MergeCorners(closeCorner, corner);
 					removeCorners.Add(closeCorner);
 				}
 			}
@@ -227,25 +243,25 @@ namespace AtomosZ.Voronoi
 			Corner mapCorner = mapCorners[(byte)((byte)mapSide + (byte)lastMapSide)];
 
 			// check if last edge of lastMapSide and first edge of currenMapSide share a corner
-			BoundaryCrossingEdge firstEV = boundCrossingEdges[mapSide][0];
-			VEdge firstEdge = firstEV.edge;
-			BoundaryCrossingEdge lastEV = boundCrossingEdges[lastMapSide][boundCrossingEdges[lastMapSide].Count - 1];
-			VEdge lastEdge = lastEV.edge;
+			BoundaryCrossingEdge firstBCE = boundCrossingEdges[mapSide][0];
+			VEdge firstEdge = firstBCE.edge;
+			BoundaryCrossingEdge lastBCE = boundCrossingEdges[lastMapSide][boundCrossingEdges[lastMapSide].Count - 1];
+			VEdge lastEdge = lastBCE.edge;
 
 			if (firstEdge == lastEdge)
 			{
 				if (lastCreatedBorderCorner == null)
 				{
 					Log("oh so we're starting with a corner cutter, eh?");
-					lastCorner = FirstCorner(mapSide, mapCorner, firstEV);
+					lastCorner = FirstCorner(mapSide, mapCorner, firstBCE);
 				}
 				else
 				{
 					Log("Fixing a corner cutter");
 					mapCorner.TryGetEdgeWith(lastCreatedBorderCorner, out VEdge noUseEdge);
-					boundCrossingEdges[mapSide].Remove(firstEV);
-					boundCrossingEdges[lastMapSide].Remove(lastEV);
-					VoronoiHelper.RemoveEdge(firstEdge);
+					boundCrossingEdges[mapSide].Remove(firstBCE);
+					boundCrossingEdges[lastMapSide].Remove(lastBCE);
+					RemoveEdge(firstEdge);
 					lastCorner = mapCorner;
 				}
 			}
@@ -257,7 +273,7 @@ namespace AtomosZ.Voronoi
 					Log("\tFound corner on border");
 				}
 
-				VoronoiHelper.MergeCorners(sharedCorner, mapCorner, sharedCorner.isOnBorder);
+				MergeCorners(sharedCorner, mapCorner, sharedCorner.isOnBorder);
 
 				if (lastCreatedBorderCorner == null)
 				{
@@ -292,7 +308,7 @@ namespace AtomosZ.Voronoi
 						return null;
 					}
 
-					if (lastEV.isOnBorder)
+					if (lastBCE.isOnBorder)
 					{
 						Log("\tlast corner before mapCorner is a border corner. Relevant?");
 					}
@@ -307,15 +323,15 @@ namespace AtomosZ.Voronoi
 					if (edgeShort)
 					{
 						// implementation of (1)
-						VoronoiHelper.MergeCorners(lastInCorner, currentInCorner, lastEV.isOnBorder);
-						VoronoiHelper.MergeCorners(currentInCorner, mapCorner, lastEV.isOnBorder);
+						MergeCorners(lastInCorner, currentInCorner, lastBCE.isOnBorder);
+						MergeCorners(currentInCorner, mapCorner, lastBCE.isOnBorder);
 					}
 					else
 					{
 						// implementation of (2)
 						BisectEdge(inSharedEdge, mapCorner, out VEdge newEdge);
-						VoronoiHelper.RemoveEdge(lastEdge);
-						VoronoiHelper.RemoveEdge(firstEdge);
+						RemoveEdge(lastEdge);
+						RemoveEdge(firstEdge);
 					}
 
 
@@ -338,18 +354,18 @@ namespace AtomosZ.Voronoi
 					if (lastCreatedBorderCorner == null)
 					{
 						Log("\tStarting with a No Shared Edge complex corner");
-						Corner move = (firstEV.edge.start.isOOB || firstEV.edge.end.isOnBorder) ? firstEV.edge.end : firstEV.edge.start;
-						move.position = firstEV.intersectPosition;
+						Corner move = (firstBCE.edge.start.isOOB || firstBCE.edge.end.isOnBorder) ? firstBCE.edge.end : firstBCE.edge.start;
+						move.position = firstBCE.intersectPosition;
 						move.isOnBorder = true;
 
-						lastCorner = FirstCorner(mapSide, move, firstEV);
+						lastCorner = FirstCorner(mapSide, move, firstBCE);
 						mapCorner.TryGetEdgeWith(move, out VEdge newEdge2);
 					}
 					else
 					{
 						Log("*This is hopefully the last corner fix*");
 						lastCreatedBorderCorner.TryGetEdgeWith(mapCorner, out VEdge newEdge);
-						VoronoiHelper.RemoveEdge(lastEdge);
+						RemoveEdge(lastEdge);
 						lastCorner = mapCorner;
 					}
 				}
@@ -436,112 +452,72 @@ namespace AtomosZ.Voronoi
 			return crossingEdges;
 		}
 
-		private void Log(string msg, LogType logType = LogType.Normal)
+
+		private void MergeCorners(Corner deprecatedCorner, Corner mergedCorner, bool ignoreBorderCornerRules = false)
 		{
-			logMsgs.Add(logType.ToString() + ": " + msg);
-			switch (logType)
+			if (!ignoreBorderCornerRules)
 			{
-				case LogType.Normal:
-					Debug.Log(msg);
-					break;
-				case LogType.Warning:
-					Debug.LogWarning(msg);
-					break;
-				case LogType.Error:
-					Debug.LogError(msg);
-					break;
-				case LogType.Exception:
-					throw new Exception(msg);
-			}
-		}
-
-		public class BoundaryCrossingEdge
-		{
-			public VEdge edge;
-			public Vector2 intersectPosition;
-			public bool isOnBorder;
-			public bool isCornerCutter;
-
-			public BoundaryCrossingEdge(VEdge edge, Vector2 intersect, bool isOnBorder = false, bool isCornerCutter = false)
-			{
-				this.edge = edge;
-				intersectPosition = intersect;
-				this.isOnBorder = isOnBorder;
-				this.isCornerCutter = isCornerCutter;
-			}
-		}
-
-
-		private bool DebugBreak(int countBeforeBreak = 2)
-		{
-			if (++breakCount >= countBeforeBreak)
-			{
-				Log("Manual Break initiated", LogType.Warning);
-				return true;
-			}
-
-			return false;
-		}
-
-		[System.Obsolete]
-		private Corner GetClosestMapCorner(Corner corner)
-		{
-			// get closest map corner
-			float closestSqrDist = float.MaxValue;
-			Corner mapCorner = null;
-			foreach (var kvp in mapCorners)
-			{
-				float dist = (corner.position - kvp.Value.position).sqrMagnitude;
-				if (dist < closestSqrDist)
+				if (!(deprecatedCorner.isOnBorder ^ mergedCorner.isOnBorder)) // if they are both on the border or both off
 				{
-					closestSqrDist = dist;
-					mapCorner = kvp.Value;
+					mergedCorner.position = (deprecatedCorner.position + mergedCorner.position) / 2; // get midpoint
+					mergedCorner.isOnBorder = deprecatedCorner.isOnBorder;
+				}
+				else if (deprecatedCorner.isOnBorder) // if only old corner is on the border use its position
+				{
+					mergedCorner.position = deprecatedCorner.position;
+					mergedCorner.isOnBorder = true;
+				}
+				// otherwise mergedCorner is on the border so leave as it is
+			}
+
+			for (int i = deprecatedCorner.connectedEdges.Count - 1; i >= 0; --i)
+				deprecatedCorner.connectedEdges[i].ReplaceSite(deprecatedCorner, mergedCorner);
+
+			deprecatedCorner.isInvalidated = true;
+
+			removeCorners.Add(deprecatedCorner);
+		}
+
+		private void RemoveEdge(VEdge edge)
+		{
+			Corner p1 = edge.start;
+			Corner p2 = edge.end;
+			var polygons = edge.GetPolygons();
+			foreach (var polygon in polygons)
+			{
+				polygon.voronoiEdges.Remove(edge);
+			}
+
+			RemoveEdgeFrom(p1, edge);
+			RemoveEdgeFrom(p2, edge);
+
+			uniqueVEdges.Remove(edge);
+		}
+
+		private void RemoveEdgeFrom(Corner corner, VEdge edge)
+		{
+			corner.connectedEdges.Remove(edge);
+			if (corner.connectedEdges.Count == 1)
+			{
+				if (corner.isOOB && corner.connectedEdges[0].GetOppositeSite(corner).isOOB)
+				{
+					Log("Found a dangling corner and edge that are safe to remove");
+					RemoveEdge(corner.connectedEdges[0]);
+				}
+				else
+				{
+					debugEdges.Add(edge);
+					Log("Found a dangling corner", LogType.Exception);
 				}
 			}
 
-			return mapCorner;
-		}
-
-		[System.Obsolete]
-		private Corner GetClosestMapCorner(Polygon currentPolygon)
-		{
-			// get closest map corner
-			float closestSqrDist = float.MaxValue;
-			Corner mapCorner = null;
-			foreach (var kvp in mapCorners)
+			if (corner.connectedEdges.Count == 0)
 			{
-				float dist = (currentPolygon.centroid.position - kvp.Value.position).sqrMagnitude;
-				if (dist < closestSqrDist)
-				{
-					closestSqrDist = dist;
-					mapCorner = kvp.Value;
-				}
+				corner.isInvalidated = true;
+				removeCorners.Add(corner);
 			}
-
-			return mapCorner;
 		}
 
-		[System.Obsolete]
-		private bool TryGetCornerCutterEdge(Polygon polygon,
-			out VEdge cornerCutterEdge, out byte cornerByte)
-		{
-			foreach (var edge in polygon.voronoiEdges)
-			{
-				if (VoronoiGenerator.TryGetBoundsIntersection(edge.start.position, edge.end.position,
-						out Dictionary<VoronoiGenerator.MapSide, Vector2> intersections, out cornerByte))
-				{
-					if (intersections.Count == 2) // corner cutter
-					{
-						cornerCutterEdge = edge;
-						return true;
-					}
-				}
-			}
-
-			cornerCutterEdge = null;
-			cornerByte = 0;
-			return false;
-		}
 
 		/// <summary>
 		/// <para>edge: becomes completely INBOUND edge.</para>
@@ -576,7 +552,7 @@ namespace AtomosZ.Voronoi
 			centerCorner.TryGetEdgeWith(oobCorner, out newEdge);
 		}
 
-		public static void RemoveCorner(Corner corner)
+		private void RemoveCorner(Corner corner)
 		{
 			foreach (var polygon in corner.polygons)
 			{
@@ -596,6 +572,55 @@ namespace AtomosZ.Voronoi
 			}
 
 			uniqueCorners.Remove(corner);
+		}
+
+
+		private bool DebugBreak(int countBeforeBreak = 2)
+		{
+			if (++breakCount >= countBeforeBreak)
+			{
+				Log("Manual Break initiated", LogType.Warning);
+				return true;
+			}
+
+			return false;
+		}
+
+		private void Log(string msg, LogType logType = LogType.Normal)
+		{
+			logMsgs.Add(logType.ToString() + ": " + msg);
+			switch (logType)
+			{
+				case LogType.Normal:
+					Debug.Log(msg);
+					break;
+				case LogType.Warning:
+					Debug.LogWarning(msg);
+					break;
+				case LogType.Error:
+					Debug.LogError(msg);
+					break;
+				case LogType.Exception:
+					throw new Exception(msg);
+			}
+		}
+
+
+
+		public class BoundaryCrossingEdge
+		{
+			public VEdge edge;
+			public Vector2 intersectPosition;
+			public bool isOnBorder;
+			public bool isCornerCutter;
+
+			public BoundaryCrossingEdge(VEdge edge, Vector2 intersect, bool isOnBorder = false, bool isCornerCutter = false)
+			{
+				this.edge = edge;
+				intersectPosition = intersect;
+				this.isOnBorder = isOnBorder;
+				this.isCornerCutter = isCornerCutter;
+			}
 		}
 	}
 }
