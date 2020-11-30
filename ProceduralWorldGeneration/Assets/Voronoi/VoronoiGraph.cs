@@ -381,20 +381,24 @@ namespace AtomosZ.Voronoi
 			return lastCorner;
 		}
 
-		private Corner FirstCorner(MapSide mapSide, Corner connectTo, BoundaryCrossingEdge firstEV)
+		private Corner FirstCorner(MapSide mapSide, Corner connectTo, BoundaryCrossingEdge firstBCE)
 		{
-			var secondEV = boundCrossingEdges[mapSide][1];
-			if (secondEV.isOnBorder)
+			Corner newCorner;
+			var secondBCE = boundCrossingEdges[mapSide][1];
+			if (secondBCE.isOnBorder)
 			{
-				Log("SPECIAL CASE: Found corner on border", LogType.Warning);
-				return null;
+				Log("FirstCorner(): Found corner on border");
+				newCorner = secondBCE.edge.start.isOnBorder ? secondBCE.edge.start : secondBCE.edge.end;
+				connectTo.TryGetEdgeWith(newCorner, out VEdge newEdge);
+			}
+			else
+			{
+				BisectEdge(secondBCE.edge, secondBCE.intersectPosition, out newCorner, out VEdge newEdge);
+				connectTo.TryGetEdgeWith(newCorner, out VEdge newEdge2);
 			}
 
-			BisectEdge(secondEV.edge, secondEV.intersectPosition, out Corner newCorner, out VEdge newEdge);
-			connectTo.TryGetEdgeWith(newCorner, out VEdge newEdge2);
-
-			boundCrossingEdges[mapSide].Remove(firstEV);
-			boundCrossingEdges[mapSide].Remove(secondEV);
+			boundCrossingEdges[mapSide].Remove(firstBCE);
+			boundCrossingEdges[mapSide].Remove(secondBCE);
 			return newCorner;
 		}
 
