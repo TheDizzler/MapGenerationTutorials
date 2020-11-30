@@ -266,11 +266,11 @@ namespace AtomosZ.Voronoi
 				else
 				{
 					mapCorner.TryGetEdgeWith(lastCreatedBorderCorner, out VEdge sharedEdge);
+					boundCrossingEdges[lastMapSide].Remove(lastBCE);
 				}
 
 				// remove no longer intersection edges
-				boundCrossingEdges[lastMapSide].Remove(lastEV);
-				boundCrossingEdges[mapSide].Remove(firstEV);
+				boundCrossingEdges[mapSide].Remove(firstBCE);
 				lastCorner = mapCorner;
 			}
 			else
@@ -326,11 +326,11 @@ namespace AtomosZ.Voronoi
 					else
 					{
 						mapCorner.TryGetEdgeWith(lastCreatedBorderCorner, out VEdge sharedEdge);
+						boundCrossingEdges[lastMapSide].Remove(lastBCE);
 					}
 
 					// remove no longer intersection edges
-					boundCrossingEdges[lastMapSide].Remove(lastEV);
-					boundCrossingEdges[mapSide].Remove(firstEV);
+					boundCrossingEdges[mapSide].Remove(firstBCE);
 					lastCorner = mapCorner;
 				}
 				else
