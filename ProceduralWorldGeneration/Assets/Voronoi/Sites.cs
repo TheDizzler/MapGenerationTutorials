@@ -98,6 +98,7 @@ namespace AtomosZ.Voronoi
 		{
 			if (other == this)
 			{
+				VoronoiGenerator.debugCorners.Add(other);
 				throw new System.Exception("Trying to find shared edge between the same corner");
 			}
 			foreach (VEdge edge in connectedEdges)

@@ -64,7 +64,8 @@ namespace AtomosZ.Voronoi
 
 			if (generator.clampToMapBounds)
 			{
-				ClampToMapBounds();
+				if (!ClampToMapBounds())
+					return;
 
 				foreach (Corner corner in uniqueCorners)
 				{
@@ -147,9 +148,11 @@ namespace AtomosZ.Voronoi
 		}
 
 		/// <summary>
+		/// Returns false if exception thrown.
 		/// Double corner cutting case seed: 637421845385189985
 		/// </summary>
-		private void ClampToMapBounds()
+		/// <returns></returns>
+		private bool ClampToMapBounds()
 		{
 			logMsgs = new List<string>();
 
@@ -193,8 +196,10 @@ namespace AtomosZ.Voronoi
 				System.IO.File.WriteAllLines(logFilePath + generator.randomSeed + ".txt", logMsgs);
 				Debug.LogException(ex);
 				generator.useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
-				return;
+				return false;
 			}
+
+			return true;
 		}
 
 		private Corner BisectEdgesToBounds(MapSide mapSide, Corner lastCreatedBorderCorner)
