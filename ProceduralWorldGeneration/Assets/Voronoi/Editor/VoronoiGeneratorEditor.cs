@@ -97,14 +97,48 @@ namespace AtomosZ.Voronoi.Editors
 					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .25f, EventType.Repaint);
 				}
 
+
+				GUIStyle style = new GUIStyle();
+				Vector2 textOffset = new Vector2(.25f, .20f);
+				Handles.color = Color.cyan;
+				foreach (var polygon in VoronoiGenerator.debugPolygons)
+				{
+					
+					foreach (var edge in polygon.voronoiEdges)
+					{
+						Handles.DrawDottedLine(edge.start.position, edge.end.position, 1);
+					}
+
+					
+					foreach (var corner in polygon.corners)
+					{
+						Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .375f, EventType.Repaint);
+					}
+
+					style.normal.textColor = Color.cyan;
+					int i = 0;
+					foreach (var edge in polygon.voronoiEdges)
+					{
+						Handles.Label((edge.start.position + edge.end.position) / 2, "" + i, style);
+						++i;
+					}
+
+					style.normal.textColor = Color.white;
+					i = 0;
+					foreach (var corner in polygon.corners)
+					{
+						Handles.Label(corner.position + textOffset, "" + i, style);
+						++i;
+					}
+				}
+
 				Handles.color = Color.magenta;
 				foreach (var edge in VoronoiGenerator.debugEdges)
-				{
 					Handles.DrawDottedLine(edge.start.position, edge.end.position, 1);
-				}
 
 				foreach (var corner in VoronoiGenerator.debugCorners)
 					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .375f, EventType.Repaint);
+
 			}
 		}
 	}
