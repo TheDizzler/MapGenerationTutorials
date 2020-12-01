@@ -328,11 +328,6 @@ namespace AtomosZ.Voronoi
 				if (inSharedEdge != null)
 				{
 					Log("\tNot too complex");
-
-					Polygon cornerPolygon = GetBorderPolygon(inSharedEdge);
-					Polygon lastPolygon = GetBorderPolygon(lastEdge);
-					Polygon currentPolygon = mapSide == MapSide.Top ? null : GetBorderPolygon(firstEdge);
-
 					// try find last intersection created on last mapSide
 					if (lastBCE.isOnBorder)
 					{
@@ -354,8 +349,6 @@ namespace AtomosZ.Voronoi
 					{
 						Log("No need to create new edge");
 						CreateBorderEdgeAndAddToPolygon(lastCreatedBorderCorner, mapCorner);
-						foreach (var poly in lastCreatedBorderCorner.GetSharedPolygons(mapCorner))
-							debugPolygons.Add(poly);
 					}
 					else
 					{
@@ -367,6 +360,7 @@ namespace AtomosZ.Voronoi
 
 						// implementation of (2)
 						BisectEdge(inSharedEdge, mapCorner, out VEdge newEdge);
+						Polygon cornerPolygon = GetBorderPolygon(inSharedEdge);
 						VoronoiHelper.Associate(cornerPolygon, newEdge);
 
 						RemoveEdge(lastEdge);
@@ -417,6 +411,7 @@ namespace AtomosZ.Voronoi
 		{
 			if (edge.GetPolygonCount() != 1)
 			{
+				debugEdges.Add(edge);
 				foreach (var poly in edge.GetPolygons())
 					debugPolygons.Add(poly);
 				Log("Corners share illogical polygon count: " + edge.GetPolygonCount(), LogType.Exception);
