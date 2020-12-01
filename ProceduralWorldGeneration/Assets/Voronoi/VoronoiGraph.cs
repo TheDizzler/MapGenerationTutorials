@@ -166,16 +166,17 @@ namespace AtomosZ.Voronoi
 			logMsgs.Add("Merge near corners: " + generator.mergeNearCorners);
 			logMsgs.Add("******************************************\n");
 
-			boundCrossingEdges = GetBoundCrossingEdges();
-			// Sort edges clockwise starting from top left
-			boundCrossingEdges[MapSide.Top].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x < e2.intersectPosition.x ? -1 : 1; });
-			boundCrossingEdges[MapSide.Right].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y > e2.intersectPosition.y ? -1 : 1; });
-			boundCrossingEdges[MapSide.Bottom].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x > e2.intersectPosition.x ? -1 : 1; });
-			boundCrossingEdges[MapSide.Left].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y < e2.intersectPosition.y ? -1 : 1; });
-
-			Corner lastCreatedBorderCorner = null;
 			try
 			{
+				boundCrossingEdges = GetBoundCrossingEdges();
+				// Sort edges clockwise starting from top left
+				boundCrossingEdges[MapSide.Top].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x < e2.intersectPosition.x ? -1 : 1; });
+				boundCrossingEdges[MapSide.Right].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y > e2.intersectPosition.y ? -1 : 1; });
+				boundCrossingEdges[MapSide.Bottom].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x > e2.intersectPosition.x ? -1 : 1; });
+				boundCrossingEdges[MapSide.Left].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y < e2.intersectPosition.y ? -1 : 1; });
+
+				Corner lastCreatedBorderCorner = null;
+
 				foreach (MapSide mapSide in (MapSide[])Enum.GetValues(typeof(MapSide)))
 				{
 					if (mapSide == MapSide.Inside)
@@ -193,9 +194,10 @@ namespace AtomosZ.Voronoi
 			}
 			catch (Exception ex)
 			{
-				System.IO.File.WriteAllLines(logFilePath + generator.randomSeed + ".txt", logMsgs);
+				System.IO.File.WriteAllLines(logFilePath + "BoundsClampIssue_" + generator.randomSeed + ".txt", logMsgs);
 				Debug.LogException(ex);
 				generator.useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
+				generator.createRegions = false;
 				return false;
 			}
 
