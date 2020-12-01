@@ -20,9 +20,51 @@ namespace AtomosZ.Voronoi.Regions
 		public void CreateRegion(Polygon poly)
 		{
 			polygon = poly;
+			ValidatePolygon(polygon);
 			//transform.position = polygon.centroid.position;
 			meshFilter = GetComponent<MeshFilter>();
 			meshFilter.sharedMesh = CreateMesh();
+		}
+
+		private void ValidatePolygon(Polygon polygon)
+		{
+			foreach (var corner in polygon.corners)
+			{
+				if (corner.isOOB || corner.isInvalidated)
+				{
+					VoronoiGenerator.debugCorners.Add(corner);
+					throw new System.Exception("Corner is OOB or is invalidated");
+				}
+
+				if (!corner.polygons.Contains(polygon))
+				{
+					VoronoiGenerator.debugCorners.Add(corner);
+					throw new System.Exception("Corner does not contain this polygon!");
+				}
+			}
+
+			foreach (var edge in polygon.voronoiEdges)
+			{
+				if (edge.GetPolygonCount() == 0 || edge.GetPolygonCount() > 2)
+				{
+					VoronoiGenerator.debugEdges.Add(edge);
+					throw new System.Exception("edge has invalid num of polygons");
+				}
+
+				if (!polygon.corners.Contains(edge.start) || !polygon.corners.Contains(edge.end))
+				{
+					VoronoiGenerator.debugCorners.Add(edge.start);
+					VoronoiGenerator.debugCorners.Add(edge.end);
+					VoronoiGenerator.debugEdges.Add(edge);
+					throw new System.Exception("edge has corner not contained in polygon");
+				}
+
+				if (!edge.GetPolygons().Contains(polygon))
+				{
+					VoronoiGenerator.debugEdges.Add(edge);
+					throw new System.Exception("edge does not contain this polygon!");
+				}
+			}
 		}
 
 		private Mesh CreateMesh()
@@ -53,7 +95,7 @@ namespace AtomosZ.Voronoi.Regions
 			mesh.GetNormals(normals);
 			if (normals[0].z > 0)
 				mesh.triangles = triangles.Reverse().ToArray();
-			
+
 			return mesh;
 		}
 
@@ -64,6 +106,13 @@ namespace AtomosZ.Voronoi.Regions
 		/// <param name="corner2"></param>
 		private void AddTriangle(int corner1, int corner2)
 		{
+			if ((triangleIndex + 2) >= triangles.Length)
+			{
+				VoronoiGenerator.debugPolygons.Add(polygon);
+				throw new System.Exception("Triangles exceeds our allocation. Index required: " + (triangleIndex + 2) + ". Allocated: " + triangles.Length
+					+ "\nPolygon: " + polygon.centroid.position);
+			}
+
 			triangles[triangleIndex++] = corner1;
 			triangles[triangleIndex++] = corner2;
 			triangles[triangleIndex++] = 0;
