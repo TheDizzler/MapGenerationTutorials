@@ -103,13 +103,13 @@ namespace AtomosZ.Voronoi.Editors
 				Handles.color = Color.cyan;
 				foreach (var polygon in VoronoiGenerator.debugPolygons)
 				{
-					
+
 					foreach (var edge in polygon.voronoiEdges)
 					{
 						Handles.DrawDottedLine(edge.start.position, edge.end.position, 1);
 					}
 
-					
+
 					foreach (var corner in polygon.corners)
 					{
 						Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .375f, EventType.Repaint);

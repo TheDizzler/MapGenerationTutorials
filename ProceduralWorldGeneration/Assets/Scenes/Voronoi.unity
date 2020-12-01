@@ -281,7 +281,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   useRandomSeed: 0
-  randomSeed: 637421954046167189
+  randomSeed: 637424329786773127
   mapWidth: 30
   mapHeight: 30
   regionAmount: 66

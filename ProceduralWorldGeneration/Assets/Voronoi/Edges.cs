@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -99,6 +98,17 @@ namespace AtomosZ.Voronoi
 				borderCorners.Add(end);
 
 			return borderCorners.Count > 0;
+		}
+
+		public List<Polygon> GetSharedPolygons(VEdge edge)
+		{
+			List<Polygon> shared = new List<Polygon>();
+			foreach (Polygon poly in polygons)
+			{
+				if (edge.Contains(poly))
+					shared.Add(poly);
+			}
+			return shared;
 		}
 	}
 
