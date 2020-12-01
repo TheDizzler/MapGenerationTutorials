@@ -34,6 +34,7 @@ namespace AtomosZ.Voronoi
 
 		public static List<VEdge> debugEdges;
 		public static List<Corner> debugCorners;
+		public static List<Polygon> debugPolygons;
 
 		private static Rect mapBounds;
 		private static float mapBoundsTolerance = .00001f;
@@ -77,6 +78,7 @@ namespace AtomosZ.Voronoi
 		{
 			debugEdges = new List<VEdge>();
 			debugCorners = new List<Corner>();
+			debugPolygons = new List<Polygon>();
 			MergeNearCorners = mergeNearCorners;
 
 			minSqrDistBetweenCorners = minSqrDistBtwnSites;
