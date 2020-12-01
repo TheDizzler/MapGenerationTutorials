@@ -33,7 +33,7 @@ namespace AtomosZ.Voronoi
 		/// <summary>
 		/// List of polygons that this contains this corner.
 		/// </summary>
-		public HashSet<Polygon> polygons = new HashSet<Polygon>();
+		public List<Polygon> polygons = new List<Polygon>();
 		public DelaunayTriangle delaunayTriangle = null;
 		public int num;
 		public bool isOOB = false;
@@ -155,6 +155,18 @@ namespace AtomosZ.Voronoi
 			foreach (var edge in GetConnectedEdgesIn(polygon))
 				edge.Remove(polygon);
 			polygons.Remove(polygon);
+		}
+
+		public List<Polygon> GetSharedPolygons(Corner other)
+		{
+			List<Polygon> shared = new List<Polygon>();
+			foreach (var polygon in polygons)
+			{
+				if (other.polygons.Contains(polygon))
+					shared.Add(polygon);
+			}
+
+			return shared;
 		}
 	}
 
