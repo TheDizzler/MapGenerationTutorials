@@ -27,7 +27,11 @@ namespace AtomosZ.Voronoi
 		private string logFilePath = Application.dataPath + @"\Voronoi\ErrorLogs\";
 		private List<string> logMsgs;
 
-
+		/// <summary>
+		/// Random seed 637427950365396994 produces an invalid polygon that uses top left map corner.
+		/// </summary>
+		/// <param name="vGen"></param>
+		/// <param name="dGraph"></param>
 		public VoronoiGraph(VoronoiGenerator vGen, DelaunayGraph dGraph)
 		{
 			generator = vGen;
