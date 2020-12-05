@@ -131,7 +131,7 @@ namespace AtomosZ.Voronoi
 			{
 				VoronoiGenerator.debugCorners.Add(this);
 				VoronoiGenerator.debugPolygons.Add(polygon);
-				throw new System.Exception("Corner has an unusual amount of neighbhours: " + neighbours.Count);
+				throw new System.Exception("Corner " + num + " has an unusual amount of neighbhours: " + neighbours.Count);
 			}
 
 			return neighbours;

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 using Random = System.Random;
@@ -27,6 +28,7 @@ namespace AtomosZ.Voronoi
 		public static float minDistCornerAndBorder;
 		public static bool MergeNearCorners;
 
+		public static Dictionary<MapSide, Tuple<Vector2, Vector2>> borderEndPoints;
 		public static Vector2 topLeft;
 		public static Vector2 topRight;
 		public static Vector2 bottomRight;
@@ -61,6 +63,19 @@ namespace AtomosZ.Voronoi
 		public bool viewDelaunayTriangles = true;
 		public bool viewCenteroids = true;
 		public bool viewVoronoiPolygons = true;
+		public bool viewCorners = false;
+		public bool viewCornerIDs = false;
+		public bool viewEdgeIDs = false;
+		public bool viewIntersections = false;
+		public bool viewIntersectionIDs = false;
+		public bool viewIntersectionDirections = false;
+		public bool debugBorders = false;
+		public bool topBorder = true;
+		public bool rightBorder = true;
+		public bool bottomBorder = true;
+		public bool leftBorder = true;
+
+
 
 		public DelaunayGraph dGraph;
 		public VoronoiGraph vGraph;
@@ -76,9 +91,16 @@ namespace AtomosZ.Voronoi
 
 		public void GenerateMap()
 		{
+			VEdge.count = 0;
 			debugEdges = new List<VEdge>();
 			debugCorners = new List<Corner>();
 			debugPolygons = new List<Polygon>();
+			if (regions != null)
+				foreach (var region in regions)
+					DestroyImmediate(region.gameObject);
+
+			regions = null;
+
 			MergeNearCorners = mergeNearCorners;
 
 			minSqrDistBetweenCorners = minSqrDistBtwnSites;
@@ -94,6 +116,13 @@ namespace AtomosZ.Voronoi
 			topRight = new Vector2(mapBounds.xMax, mapBounds.yMax);
 			bottomRight = new Vector2(mapBounds.xMax, mapBounds.yMin);
 			bottomLeft = new Vector2(mapBounds.xMin, mapBounds.yMin);
+
+			borderEndPoints = new Dictionary<MapSide, Tuple<Vector2, Vector2>>();
+			borderEndPoints.Add(MapSide.Top, new Tuple<Vector2, Vector2>(topLeft, topRight));
+			borderEndPoints.Add(MapSide.Right, new Tuple<Vector2, Vector2>(topRight, bottomRight));
+			borderEndPoints.Add(MapSide.Bottom, new Tuple<Vector2, Vector2>(bottomRight, bottomLeft));
+			borderEndPoints.Add(MapSide.Left, new Tuple<Vector2, Vector2>(bottomLeft, topLeft));
+
 			List<Vector2> sites = new List<Vector2>();
 			// create corner sites
 
@@ -125,10 +154,17 @@ namespace AtomosZ.Voronoi
 					sites.Add(site);
 			}
 
-			dGraph = new DelaunayGraph(sites);
-			vGraph = new VoronoiGraph(this, dGraph);
-
-			CreateRegions();
+			try
+			{
+				dGraph = new DelaunayGraph(sites);
+				vGraph = new VoronoiGraph(this, dGraph);
+				CreateRegions();
+			}
+			catch (System.Exception ex)
+			{
+				useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
+				Debug.LogException(ex);
+			}
 		}
 
 		/// <summary>
@@ -260,17 +296,108 @@ namespace AtomosZ.Voronoi
 				|| Mathf.Approximately(corner.position.y, mapBounds.yMax);
 		}
 
+		/// <summary>
+		/// Returns MapSide.Inside if corner is not on border.
+		/// </summary>
+		/// <param name="corner"></param>
+		/// <returns></returns>
 		public static MapSide GetOnBorderMapSide(Corner corner)
 		{
-			if (Mathf.Approximately(corner.position.x, mapBounds.xMin))
+			return GetOnBorderMapSide(corner.position);
+		}
+
+		/// <summary>
+		/// Returns MapSide.Inside if corner is not on border.
+		/// </summary>
+		/// <param name="borderCoord"></param>
+		/// <returns></returns>
+		public static MapSide GetOnBorderMapSide(Vector2 borderCoord)
+		{
+			if (Mathf.Approximately(borderCoord.x, mapBounds.xMin))
 				return MapSide.Left;
-			if (Mathf.Approximately(corner.position.x, mapBounds.xMax))
+			if (Mathf.Approximately(borderCoord.x, mapBounds.xMax))
 				return MapSide.Right;
-			if (Mathf.Approximately(corner.position.y, mapBounds.yMin))
+			if (Mathf.Approximately(borderCoord.y, mapBounds.yMin))
 				return MapSide.Bottom;
-			if (Mathf.Approximately(corner.position.y, mapBounds.yMax))
+			if (Mathf.Approximately(borderCoord.y, mapBounds.yMax))
 				return MapSide.Top;
 			return MapSide.Inside;
+		}
+
+		public static bool TryGetCornerOOBofSameSideAs(Vector2 borderCoord, VEdge edge, out Corner sameSideCorner, out MapSide mapSide)
+		{
+			mapSide = GetOnBorderMapSide(borderCoord);
+			float lockedCoord = 0;
+			switch (mapSide)
+			{
+				case MapSide.Left:
+
+					lockedCoord = topLeft.x;
+					if (edge.start.position.y > lockedCoord)
+						sameSideCorner = edge.start;
+					else
+						sameSideCorner = edge.end;
+					return true;
+				case MapSide.Right:
+					lockedCoord = topRight.x;
+					if (edge.start.position.x > lockedCoord)
+						sameSideCorner = edge.start;
+					else
+						sameSideCorner = edge.end;
+					return true;
+				case MapSide.Bottom:
+					lockedCoord = bottomRight.y;
+					if (edge.start.position.y < lockedCoord)
+						sameSideCorner = edge.start;
+					else
+						sameSideCorner = edge.end;
+					return true;
+				case MapSide.Top:
+					lockedCoord = topLeft.y;
+					if (edge.start.position.x < lockedCoord)
+						sameSideCorner = edge.start;
+					else
+						sameSideCorner = edge.end;
+					return true;
+			}
+
+			sameSideCorner = null;
+			return false;
+		}
+
+		public static bool GetCoordinateOfMapSide(Vector2 coordinateOnBorder, out MapSide mapSide, out float lockedCoord)
+		{
+			if (Mathf.Approximately(coordinateOnBorder.x, mapBounds.xMin))
+			{
+				mapSide = MapSide.Left;
+				lockedCoord = topLeft.x;
+				return true;
+			}
+
+			if (Mathf.Approximately(coordinateOnBorder.x, mapBounds.xMax))
+			{
+				mapSide = MapSide.Right;
+				lockedCoord = topRight.x;
+				return true;
+			}
+
+			if (Mathf.Approximately(coordinateOnBorder.y, mapBounds.yMin))
+			{
+				mapSide = MapSide.Bottom;
+				lockedCoord = bottomRight.y;
+				return true;
+			}
+
+			if (Mathf.Approximately(coordinateOnBorder.y, mapBounds.yMax))
+			{
+				mapSide = MapSide.Top;
+				lockedCoord = topLeft.y;
+				return true;
+			}
+
+			mapSide = MapSide.Inside;
+			lockedCoord = 0;
+			return false;
 		}
 
 		/// <summary>
@@ -470,7 +597,7 @@ namespace AtomosZ.Voronoi
 		/// <param name="p4"></param>
 		/// <param name="intersectPoint"></param>
 		/// <returns></returns>
-		private static bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
+		public static bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
 		{
 			// Get the segments' parameters.
 			float dx12 = p1.x - p2.x;
@@ -513,12 +640,7 @@ namespace AtomosZ.Voronoi
 
 		private void CreateRegions()
 		{
-			if (regions != null)
-				foreach (var region in regions)
-					DestroyImmediate(region.gameObject);
-
-			regions.Clear();
-			if (!createRegions)
+			if (!createRegions || debugBorders)
 				return;
 			regions = new List<Region>();
 

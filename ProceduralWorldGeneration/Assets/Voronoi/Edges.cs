@@ -6,7 +6,7 @@ namespace AtomosZ.Voronoi
 {
 	public class VEdge : Edge<Corner>
 	{
-		private static int count = 0;
+		public static int count = 0;
 
 		private List<Polygon> polygons = new List<Polygon>();
 
@@ -29,7 +29,7 @@ namespace AtomosZ.Voronoi
 		public void Remove(Polygon polygon)
 		{
 			polygons.Remove(polygon);
-			Debug.Log("Edge has no polygons - deleting");
+			Debug.Log("Edge " + num + " has no polygons - deleting");
 			VoronoiGraph.uniqueVEdges.Remove(this);
 		}
 

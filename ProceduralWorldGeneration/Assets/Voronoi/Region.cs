@@ -33,7 +33,8 @@ namespace AtomosZ.Voronoi.Regions
 				if (corner.isOOB || corner.isInvalidated)
 				{
 					VoronoiGenerator.debugCorners.Add(corner);
-					throw new System.Exception("Corner is OOB or is invalidated");
+					VoronoiGenerator.debugPolygons.Add(polygon);
+					throw new System.Exception("Corner is OOB or is invalidated. CornerID: " + corner.num);
 				}
 
 				if (!corner.polygons.Contains(polygon))
