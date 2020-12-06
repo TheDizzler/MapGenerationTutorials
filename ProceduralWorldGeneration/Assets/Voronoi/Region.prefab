@@ -46,6 +46,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b02d923d8d1de244b0fee8153ff5526, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  nudgeToCenterAmount: 0.05
+  borderWidth: 0.127
   vertices: []
   triangles: 
 --- !u!64 &1344794779784976004

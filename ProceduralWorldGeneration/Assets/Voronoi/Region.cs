@@ -6,6 +6,9 @@ namespace AtomosZ.Voronoi.Regions
 {
 	public class Region : MonoBehaviour
 	{
+		public float nudgeToCenterAmount = .2f;
+		public float borderWidth = .127f;
+
 		private Polygon polygon;
 		private MeshFilter meshFilter;
 		private Mesh mesh;
@@ -35,23 +38,38 @@ namespace AtomosZ.Voronoi.Regions
 			lr.startColor = Color.black;
 			lr.endColor = Color.black;
 			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
-			lr.widthMultiplier = .127f;
+			lr.widthMultiplier = borderWidth;
 			lr.positionCount = vertices.Length;
+			lr.numCapVertices = 20;
 
 			CreateBorder();
 		}
 
 
+
+		/// <summary>
+		/// This will create overlapping borders. Maybe shift the borders toward the center?
+		/// </summary>
 		private void CreateBorder()
 		{
 			int i;
+			Vector3 vert;
+			Vector3 dirToCenter;
+			Vector3 adjustedPos;
 			for (i = 1; i < vertices.Length; ++i)
 			{
-				lr.SetPosition(i - 1, vertices[i]);
+				vert = vertices[i];
+				dirToCenter = (vert - (Vector3)polygon.centroid.position).normalized;
+				adjustedPos = vert - dirToCenter * nudgeToCenterAmount;
+				lr.SetPosition(i - 1, adjustedPos);
 			}
 
-			lr.SetPosition(i - 1, vertices[1]);
+			vert = vertices[1]; // index 0 is center!
+			dirToCenter = (vert - (Vector3)polygon.centroid.position).normalized;
+			adjustedPos = vert - dirToCenter * nudgeToCenterAmount;
+			lr.SetPosition(i - 1, adjustedPos);
 		}
+
 
 		void OnMouseEnter()
 		{
