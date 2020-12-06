@@ -90,7 +90,6 @@ namespace AtomosZ.Voronoi
 			}
 
 
-
 			for (int i = removeCorners.Count - 1; i >= 0; --i)
 			{
 				Corner removingCorner = removeCorners[i];
@@ -108,10 +107,8 @@ namespace AtomosZ.Voronoi
 				}
 
 				removingCorner.connectedEdges.Clear();
-
 				RemoveCorner(removingCorner);
 			}
-
 
 
 			int culled = 0;
@@ -121,6 +118,10 @@ namespace AtomosZ.Voronoi
 				polygons.Remove(polygon);
 				++culled;
 			}
+
+
+			foreach (Polygon polygon in polygons)
+				polygon.CenterCentroid();
 		}
 
 

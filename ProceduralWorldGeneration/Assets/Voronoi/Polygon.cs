@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -85,6 +86,19 @@ namespace AtomosZ.Voronoi
 			corners = null;
 			voronoiEdges = null;
 			VoronoiGraph.invalidatedPolygons.Add(this);
+		}
+
+		public void CenterCentroid()
+		{
+			Vector2 total = Vector2.zero;
+			int count = 0;
+			foreach (var corner in corners)
+			{
+					total += corner.position;
+					++count;
+			}
+
+			centroid.position = total / count;
 		}
 	}
 
