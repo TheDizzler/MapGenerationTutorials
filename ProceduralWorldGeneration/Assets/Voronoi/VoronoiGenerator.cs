@@ -640,7 +640,7 @@ namespace AtomosZ.Voronoi
 
 		private void CreateRegions()
 		{
-			if (!createRegions || debugBorders)
+			if (!createRegions || debugBorders || !clampToMapBounds)
 				return;
 			regions = new List<Region>();
 

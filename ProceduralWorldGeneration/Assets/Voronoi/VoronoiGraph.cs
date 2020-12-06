@@ -28,7 +28,9 @@ namespace AtomosZ.Voronoi
 		private List<string> logMsgs;
 
 		/// <summary>
-		/// Random seed 637427950365396994 produces an invalid polygon that uses top left map corner.
+		/// Some random seeds produce invalid polygon that uses map corners. Ex:
+		/// 637427950365396994
+		/// 637427958541256155
 		/// </summary>
 		/// <param name="vGen"></param>
 		/// <param name="dGraph"></param>

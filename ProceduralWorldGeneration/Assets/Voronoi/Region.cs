@@ -8,6 +8,9 @@ namespace AtomosZ.Voronoi.Regions
 	{
 		private Polygon polygon;
 		private MeshFilter meshFilter;
+		private Mesh mesh;
+		private LineRenderer lr;
+
 		/// <summary>
 		/// Index 0 == polygon centroid.
 		/// </summary>
@@ -21,10 +24,40 @@ namespace AtomosZ.Voronoi.Regions
 		{
 			polygon = poly;
 			ValidatePolygon(polygon);
-			//transform.position = polygon.centroid.position;
+
 			meshFilter = GetComponent<MeshFilter>();
-			meshFilter.sharedMesh = CreateMesh();
+			mesh = CreateMesh();
+			meshFilter.sharedMesh = mesh;
+			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
+			meshCollider.sharedMesh = mesh;
+
+			lr = gameObject.AddComponent<LineRenderer>();
+			lr.startColor = Color.black;
+			lr.endColor = Color.black;
+			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+			lr.widthMultiplier = .127f;
+			lr.positionCount = vertices.Length;
+
+			CreateBorder();
 		}
+
+
+		private void CreateBorder()
+		{
+			int i;
+			for (i = 1; i < vertices.Length; ++i)
+			{
+				lr.SetPosition(i - 1, vertices[i]);
+			}
+
+			lr.SetPosition(i - 1, vertices[1]);
+		}
+
+		void OnMouseEnter()
+		{
+			Debug.Log("entered " + polygon.GetName());
+		}
+
 
 		private void ValidatePolygon(Polygon polygon)
 		{
@@ -94,9 +127,18 @@ namespace AtomosZ.Voronoi.Regions
 
 			List<Vector3> normals = new List<Vector3>();
 			mesh.GetNormals(normals);
-			if (normals[0].z > 0)
-				mesh.triangles = triangles.Reverse().ToArray();
+			if (normals[0].z > 0) // corners were in reverse order
+			{
+				vertices = vertices.Reverse().ToArray();
+				Vector3 moveToLast = vertices[0];
+				vertices[0] = vertices[vertices.Length - 1];
+				vertices[vertices.Length - 1] = moveToLast;
+				mesh.SetVertices(vertices);
+				polygon.corners.Reverse();
 
+			}
+
+			mesh.RecalculateNormals();
 			return mesh;
 		}
 
@@ -123,7 +165,7 @@ namespace AtomosZ.Voronoi.Regions
 		/// Travels around the polygon, corner-by-corner and puts corners in order 
 		///  either clockwise or counterclockwise...currently no way to know which way :O
 		/// </summary>
-		public void OrderCorners()
+		private void OrderCorners()
 		{
 			List<Corner> ordered = new List<Corner>();
 			Corner first = polygon.corners[0];
