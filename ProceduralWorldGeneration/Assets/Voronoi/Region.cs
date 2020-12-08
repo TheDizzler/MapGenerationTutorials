@@ -6,13 +6,16 @@ namespace AtomosZ.Voronoi.Regions
 {
 	public class Region : MonoBehaviour
 	{
+
 		public float nudgeToCenterAmount = .2f;
 		public float borderWidth = .127f;
+
+		[SerializeField] private GameObject borderRenderer = null;
+		[SerializeField] private Transform borders = null;
 
 		private Polygon polygon;
 		private MeshFilter meshFilter;
 		private Mesh mesh;
-		private LineRenderer lr;
 
 		/// <summary>
 		/// Index 0 == polygon centroid.
@@ -34,24 +37,44 @@ namespace AtomosZ.Voronoi.Regions
 			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
 			meshCollider.sharedMesh = mesh;
 
-			lr = gameObject.AddComponent<LineRenderer>();
+
+			CreateNoisyEdges();
+			//CreateBorder();
+		}
+
+
+		private void CreateNoisyEdges()
+		{
+			foreach (VEdge edge in polygon.voronoiEdges)
+			{
+				edge.CreateNoisyEdge(VoronoiGenerator.instance.subdivisions);
+				GameObject border = Instantiate(borderRenderer, borders);
+				LineRenderer lr = border.GetComponent<LineRenderer>();
+				lr.startColor = Color.black;
+				lr.endColor = Color.black;
+				lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+				lr.widthMultiplier = borderWidth;
+				lr.numCapVertices = 4;
+				lr.numCornerVertices = 4;
+
+				lr.positionCount = edge.segments.Count;
+				lr.SetPositions(edge.segments.ToArray());
+			}
+		}
+
+		/// <summary>
+		/// Corners are nudged inwards a bit to create distinction between polygons and prevent overlapping borders.
+		/// </summary>
+		private void CreateBorder()
+		{
+			LineRenderer lr = gameObject.AddComponent<LineRenderer>();
 			lr.startColor = Color.black;
 			lr.endColor = Color.black;
 			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
 			lr.widthMultiplier = borderWidth;
-			lr.positionCount = vertices.Length;
+			lr.positionCount = vertices.Length + 1;
 			lr.numCapVertices = 20;
 
-			CreateBorder();
-		}
-
-
-
-		/// <summary>
-		/// This will create overlapping borders. Maybe shift the borders toward the center?
-		/// </summary>
-		private void CreateBorder()
-		{
 			int i;
 			Vector3 vert;
 			Vector3 dirToCenter;

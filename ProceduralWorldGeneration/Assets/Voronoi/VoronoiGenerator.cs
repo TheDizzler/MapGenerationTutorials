@@ -23,6 +23,7 @@ namespace AtomosZ.Voronoi
 			Left = 8    // 1000
 		};
 
+		public static VoronoiGenerator instance;
 		public static Random rng;
 		public static float minSqrDistBetweenCorners;
 		public static float minDistCornerAndBorder;
@@ -599,23 +600,36 @@ namespace AtomosZ.Voronoi
 		/// <returns></returns>
 		public static bool TryGetLineIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint)
 		{
-			// Get the segments' parameters.
+			return TryGetLineIntersections(p1, p2, p3, p4,
+				out intersectPoint, out float t1, out float t2);
+		}
+
+		public static bool TryGetLineIntersection(Edge<Centroid> delaunay, Edge<Corner> voronoi, out Vector2 intersectPoint, out float t1, out float t2)
+		{
+			return TryGetLineIntersections(delaunay.start.position, delaunay.end.position,
+				voronoi.start.position, voronoi.end.position, out intersectPoint, out t1, out t2);
+		}
+
+
+		private static bool TryGetLineIntersections(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint, out float t1, out float t2)
+		{
 			float dx12 = p1.x - p2.x;
 			float dy12 = p1.y - p2.y;
 			float dx34 = p4.x - p3.x;
 			float dy34 = p4.y - p3.y;
 
 			float denominator = (dy12 * dx34 - dx12 * dy34);
-			float t1 = ((p1.x - p3.x) * dy34 + (p3.y - p1.y) * dx34) / denominator;
+			t1 = ((p1.x - p3.x) * dy34 + (p3.y - p1.y) * dx34) / denominator;
 
 			if (float.IsInfinity(t1))
 			{
+				t2 = float.PositiveInfinity;
 				// The lines are parallel (or close enough to it).
 				intersectPoint = Vector2.positiveInfinity;
 				return false;
 			}
 
-			float t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12) / -denominator;
+			t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12) / -denominator;
 
 
 			if ((t2 > mapBoundsTolerance) && (t2 < 1 - mapBoundsTolerance))

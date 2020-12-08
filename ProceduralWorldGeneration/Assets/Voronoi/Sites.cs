@@ -18,6 +18,17 @@ namespace AtomosZ.Voronoi
 		{
 			num = count++;
 		}
+
+		public DEdge GetConnectingEdge(Centroid other)
+		{
+			foreach (var edge in connectedEdges)
+			{
+				if (edge.GetOppositeSite(this) == other)
+					return edge;
+			}
+
+			return null;
+		}
 	}
 
 	/// <summary>
