@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using static AtomosZ.Voronoi.VoronoiGenerator;
+using Object = UnityEngine.Object;
 
 namespace AtomosZ.Voronoi.Editors
 {
@@ -12,6 +14,7 @@ namespace AtomosZ.Voronoi.Editors
 
 		private GUIStyle style = new GUIStyle();
 		private Vector2 textOffset = new Vector2(.25f, .20f);
+		private Editor colorEditor;
 
 
 		public override void OnInspectorGUI()
@@ -25,15 +28,110 @@ namespace AtomosZ.Voronoi.Editors
 				EditorUtility.SetDirty(target);
 			}
 
-			if (GUILayout.Button("AddPoint"))
+			if (GUILayout.Button("Generate Noisy Line"))
 			{
-				gen.AddPoint();
+				EditorTools.EditorUtils.ClearLogConsole();
+				gen.GenerateNoisyLine();
+				EditorUtility.SetDirty(target);
+			}
+
+			//DrawSettingsEditor(gen.colorSettings, gen.OnColorSettingsUpdated, ref gen.colorSettingsFoldout, ref colorEditor);
+		}
+
+
+		private void DrawSettingsEditor(Object settings, System.Action OnSettingsUpdated, ref bool foldOut, ref Editor editor)
+		{
+			if (settings == null)
+				return;
+
+			foldOut = EditorGUILayout.InspectorTitlebar(foldOut, settings);
+			using (var check = new EditorGUI.ChangeCheckScope())
+			{
+				if (foldOut)
+				{
+					CreateCachedEditor(settings, null, ref editor);
+					editor.OnInspectorGUI();
+
+					if (check.changed)
+					{
+						OnSettingsUpdated();
+					}
+				}
 			}
 		}
+
+
+		/// <summary>
+		/// Quad for generating noisy edge.
+		/// </summary>
+		public class Quad
+		{
+			private Vector3 control1, control2;
+			private Vector3 line1, line2;
+			private Vector3 midPoint;
+			private List<Quad> quads = new List<Quad>();
+			private float t;
+
+
+			public Quad(Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2, int subdivisions, float t)
+			{
+				this.control1 = control1;
+				this.control2 = control2;
+				this.line1 = line1;
+				this.line2 = line2;
+				this.t = t;
+
+				midPoint = Vector3.Lerp(control1, control2, t);
+				if (subdivisions > 0)
+					CreateSubQuads(subdivisions);
+			}
+
+			private void CreateSubQuads(int subdivisions)
+			{
+				float t1 = (float)VoronoiGenerator.rng.NextDouble();
+				float t2 = (float)VoronoiGenerator.rng.NextDouble();
+				Vector3 edgeCenter1 = (line1 + control1) * .5f;
+				Vector3 edgeCenter2 = (line1 + control2) * .5f;
+
+				quads.Add(new Quad(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, t1));
+
+				Vector3 edgeCenter3 = (line2 + control1) * .5f;
+				Vector3 edgeCenter4 = (line2 + control2) * .5f;
+
+				quads.Add(new Quad(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, t2));
+			}
+
+			public void Draw()
+			{
+				Handles.color = Color.grey;
+				Handles.DrawDottedLine(line1, control1, 2);
+				Handles.DrawDottedLine(line1, control2, 2);
+				Handles.DrawDottedLine(line2, control1, 2);
+				Handles.DrawDottedLine(line2, control2, 2);
+
+				Handles.color = Color.green;
+				Handles.SphereHandleCap(0, midPoint, Quaternion.identity, .075f, EventType.Repaint);
+				foreach (Quad quad in quads)
+					quad.Draw();
+			}
+		}
+
+		private Quad quad;
 
 		void OnSceneGUI()
 		{
 			VoronoiGenerator gen = (VoronoiGenerator)target;
+
+			//if (gen.lr != null && VoronoiGenerator.rng != null)
+			//{
+			//	if (quad == null || gen.wasReset)
+			//	{
+			//		quad = new Quad(gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy, gen.subdivisions - 1, (float)VoronoiGenerator.rng.NextDouble());
+			//		gen.wasReset = false;
+			//	}
+			//	else
+			//		quad.Draw();
+			//}
 
 			if (gen.dGraph != null && gen.viewDelaunayTriangles)
 			{
@@ -138,7 +236,7 @@ namespace AtomosZ.Voronoi.Editors
 					}
 				}
 
-				
+
 
 				Handles.color = Color.cyan;
 				foreach (var polygon in VoronoiGenerator.debugPolygons)

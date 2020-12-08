@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using AtomosZ.Tutorials.Planets;
 using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 using Random = System.Random;
@@ -60,6 +61,8 @@ namespace AtomosZ.Voronoi
 		[Range(0f, 1f)]
 		public float minEdgeLengthToMerge = .05f;
 
+		public ColorSettings colorSettings;
+
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
 		public bool viewCenteroids = true;
@@ -88,9 +91,37 @@ namespace AtomosZ.Voronoi
 		public bool clampToMapBounds = true;
 		public bool createRegions = true;
 
+		[HideInInspector]
+		public LineRenderer lr;
+		public float t;
+		[Range(0, 7)]
+		public int subdivisions = 1;
+		[Range(0, 1)]
+		public float maxAmplitude = 1f;
+		public Vector3 startNoisy = Vector3.zero;
+		public Vector3 endNoisy = new Vector3(10, 0);
+		public Vector3 startControl = new Vector3(5, 5);
+		public Vector3 endControl = new Vector3(5, -5);
+		[HideInInspector]
+		public bool wasReset;
 
 
-		public void GenerateMap()
+		[HideInInspector]
+		public bool colorSettingsFoldout;
+		private ColorGenerator colorGenerator = new ColorGenerator();
+
+
+		void Start()
+		{
+			GenerateMap();
+		}
+
+		public void OnColorSettingsUpdated()
+		{
+			GenerateMap();
+		}
+
+		public void ClearMap()
 		{
 			VEdge.count = 0;
 			debugEdges = new List<VEdge>();
@@ -101,15 +132,32 @@ namespace AtomosZ.Voronoi
 					DestroyImmediate(region.gameObject);
 
 			regions = null;
+			dGraph = null;
+			vGraph = null;
+		}
+
+		private void CreateRNG()
+		{
+			if (useRandomSeed)
+				randomSeed = System.DateTime.Now.Ticks.ToString();
+			rng = new Random(randomSeed.GetHashCode());
+		}
+
+		public void GenerateMap()
+		{
+			instance = this;
+			DestroyImmediate(lr);
+			ClearMap();
+
+			CreateRNG();
+			colorGenerator.UpdateSettings(colorSettings);
 
 			MergeNearCorners = mergeNearCorners;
 
 			minSqrDistBetweenCorners = minSqrDistBtwnSites;
 			minDistCornerAndBorder = minDistBtwnCornerAndBorder;
 
-			if (useRandomSeed)
-				randomSeed = System.DateTime.Now.Ticks.ToString();
-			rng = new Random(randomSeed.GetHashCode());
+
 
 			mapBounds = new Rect(0, 0, mapWidth, mapHeight);
 
@@ -166,6 +214,60 @@ namespace AtomosZ.Voronoi
 				useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
 				Debug.LogException(ex);
 			}
+		}
+
+
+		public static float GetNewT()
+		{
+			float rnd = (float)rng.NextDouble();
+			return ((1 - instance.maxAmplitude) * .5f) + (rnd * instance.maxAmplitude);
+		}
+
+		public void GenerateNoisyLine()
+		{
+			ClearMap();
+			CreateRNG();
+			wasReset = true;
+			if (lr == null)
+				lr = gameObject.AddComponent<LineRenderer>();
+			lr.startColor = Color.black;
+			lr.endColor = Color.black;
+			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+			lr.widthMultiplier = .12f;
+			lr.numCapVertices = 20;
+			lr.positionCount = (int)Mathf.Pow(2, subdivisions) + 1;
+
+			t = GetNewT();
+
+			List<Vector3> segments = CreateSegments(startControl, endControl, startNoisy, endNoisy, subdivisions, t);
+			segments.Insert(0, startNoisy);
+			segments.Add(endNoisy);
+			lr.SetPositions(segments.ToArray());
+		}
+
+		private List<Vector3> CreateSegments(Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2, int subdivisions, float t)
+		{
+			List<Vector3> segments = new List<Vector3>();
+
+			Vector3 midPoint = Vector3.Lerp(control1, control2, t);
+			if (subdivisions > 1)
+			{
+				float t1 = GetNewT();
+				float t2 = GetNewT();
+				Vector3 edgeCenter1 = (line1 + control1) * .5f;
+				Vector3 edgeCenter2 = (line1 + control2) * .5f;
+				segments.AddRange(CreateSegments(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, t1));
+
+				segments.Add(midPoint);
+
+				Vector3 edgeCenter3 = (line2 + control1) * .5f;
+				Vector3 edgeCenter4 = (line2 + control2) * .5f;
+				segments.AddRange(CreateSegments(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, t2));
+			}
+			else
+				segments.Add(midPoint);
+
+			return segments;
 		}
 
 		/// <summary>
