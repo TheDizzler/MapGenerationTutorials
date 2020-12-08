@@ -539,16 +539,24 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-		private void Log(string msg, LogType logType = LogType.Normal)
+		/// <summary>
+		/// SilentLogging prevents normal and warnings from printing to console.
+		/// </summary>
+		/// <param name="msg"></param>
+		/// <param name="logType"></param>
+		/// <param name="silentLogging"></param>
+		private void Log(string msg, LogType logType = LogType.Normal, bool silentLogging = true)
 		{
 			logMsgs.Add(logType.ToString() + ": " + msg);
 			switch (logType)
 			{
 				case LogType.Normal:
-					Debug.Log(msg);
+					if (!silentLogging)
+						Debug.Log(msg);
 					break;
 				case LogType.Warning:
-					Debug.LogWarning(msg);
+					if (!silentLogging)
+						Debug.LogWarning(msg);
 					break;
 				case LogType.Error:
 					Debug.LogError(msg);
