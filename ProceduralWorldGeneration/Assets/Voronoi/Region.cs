@@ -6,7 +6,9 @@ namespace AtomosZ.Voronoi.Regions
 {
 	public class Region : MonoBehaviour
 	{
+		public static int count = 0;
 
+		public int id = 0;
 		public float nudgeToCenterAmount = .2f;
 		public float borderWidth = .127f;
 
@@ -14,6 +16,8 @@ namespace AtomosZ.Voronoi.Regions
 		[SerializeField] private Transform borders = null;
 
 		private Polygon polygon;
+		[HideInInspector]
+		public Polygon polygon;
 		private MeshFilter meshFilter;
 		private Mesh mesh;
 
@@ -26,26 +30,32 @@ namespace AtomosZ.Voronoi.Regions
 		private int triangleIndex = 0;
 
 
-		public void CreateRegion(Polygon poly)
+		public void CreateRegion(Polygon poly, Tutorials.Planets.ColorSettings colorSettings)
 		{
+			id = count++;
 			polygon = poly;
 			ValidatePolygon(polygon);
+
+			CreateNoisyEdges();
 
 			meshFilter = GetComponent<MeshFilter>();
 			mesh = CreateMesh();
 			meshFilter.sharedMesh = mesh;
+			GetComponent<MeshRenderer>().sharedMaterial = colorSettings.planetMaterial;
 			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
 			meshCollider.sharedMesh = mesh;
 
 
-			CreateNoisyEdges();
+
+
 			//CreateBorder();
 		}
 
 
 		private void CreateNoisyEdges()
 		{
-			foreach (VEdge edge in polygon.voronoiEdges)
+			List<VEdge> vEdges = polygon.GetVoronoiEdges();
+			foreach (VEdge edge in vEdges)
 			{
 				edge.CreateNoisyEdge(VoronoiGenerator.instance.subdivisions);
 				GameObject border = Instantiate(borderRenderer, borders);
@@ -59,6 +69,34 @@ namespace AtomosZ.Voronoi.Regions
 
 				lr.positionCount = edge.segments.Count;
 				lr.SetPositions(edge.segments.ToArray());
+			}
+
+			for (int i = 1; i < vEdges.Count; ++i)
+			{
+				if (!vEdges[i].SharesCorner(vEdges[i - 1], out Corner noneed))
+					Debug.Log("polygon " + polygon.id + " Srsly?");
+			}
+
+			VEdge last = vEdges[0];
+			for (int i = 1; i < vEdges.Count; ++i)
+			{
+				var current = vEdges[i];
+				if (!last.SharesCorner(current, out Corner sharedCorner))
+				{
+					throw new System.Exception("Fark in region " + id);
+				}
+
+				if (sharedCorner != last.end)
+				{
+					if (i != 1)
+						throw new System.Exception("we're farked");
+					last.ReverseSegments();
+				}
+
+				if (sharedCorner != current.start)
+					current.ReverseSegments();
+
+				last = current;
 			}
 		}
 
@@ -118,7 +156,7 @@ namespace AtomosZ.Voronoi.Regions
 				}
 			}
 
-			foreach (var edge in polygon.voronoiEdges)
+			foreach (var edge in polygon.GetVoronoiEdges())
 			{
 				if (edge.GetPolygonCount() == 0 || edge.GetPolygonCount() > 2)
 				{
@@ -144,22 +182,81 @@ namespace AtomosZ.Voronoi.Regions
 
 		private Mesh CreateMesh()
 		{
-			// order corners
-			OrderCorners();
-
-			vertices = new Vector3[polygon.corners.Count + 1]; // each corner plus the center
-			vertices[0] = polygon.centroid.position;
-
-			// make triangles using two corners plus center
-			triangles = new int[polygon.voronoiEdges.Count * 3]; // one triangle per edge
-			for (int i = 0; i < polygon.corners.Count; ++i)
+			List<Vector3> edgeVertices = new List<Vector3>();
+			edgeVertices.Add(polygon.centroid.position);
+			var corners = polygon.corners;
+			for (int i = 0; i < corners.Count; ++i)
 			{
-				vertices[i + 1] = polygon.corners[i].position;
-				if (i == polygon.corners.Count - 1)
-					AddTriangle(i + 1, 1);
+				VEdge edge;
+				if (i == corners.Count - 1)
+					edge = corners[i].FindSharedEdgeWith(corners[0]);
 				else
-					AddTriangle(i + 1, i + 2);
+					edge = corners[i].FindSharedEdgeWith(corners[i + 1]);
+				foreach (var point in edge.segments)
+					if (!edgeVertices.Contains(point))
+						edgeVertices.Add(point);
 			}
+
+			vertices = new Vector3[edgeVertices.Count];
+
+
+			triangles = new int[(edgeVertices.Count - 1) * 3];
+			vertices = edgeVertices.ToArray();
+			for (int i = 1; i < edgeVertices.Count; ++i)
+			{
+				if (i == edgeVertices.Count - 1)
+					AddTriangle(i, 1);
+				else
+					AddTriangle(i, i + 1);
+			}
+
+			///Using the Triangulator - does not work with central vertex
+			//for (int i = 0; i < edgeVertices.Count; ++i)
+			//	vertices[i] = edgeVertices[i];
+			//Triangulator tr = new Triangulator(vertices);
+			//var tris = tr.Triangulate();
+			////triangles = tris;
+
+			//int[] verticesFound = new int[vertices.Length];
+			//foreach (var tri in tris)
+			//{
+			//	verticesFound[tri] += 1;
+			//}
+
+			//List<int> lostVerts = new List<int>();
+			//for (int i = 0; i < verticesFound.Length; ++i)
+			//{
+			//	if (verticesFound[i] < 2)
+			//		lostVerts.Add(i);
+
+			//}
+			//triangles = new int[(edgeVertices.Count - 1) * 3];
+			//for (int i = 0; i < tris.Length; ++i)
+			//	triangles[i] = tris[i];
+			//triangles[triangles.Length - 3] = lostVerts[1];
+			//triangles[triangles.Length - 2] = lostVerts[0];
+			//triangles[triangles.Length - 1] = 0;
+
+
+			Debug.Log("Region " + id + " vertices " + vertices.Length);
+			Debug.Log("Region " + id + " triangles " + triangles.Length);
+
+
+			/// Simple polygon - corners only
+			//vertices = new Vector3[polygon.corners.Count + 1]; // each corner plus the center
+			//vertices[0] = polygon.centroid.position;
+
+			//// make triangles using two corners plus center
+			//triangles = new int[polygon.voronoiEdges.Count * 3]; // one triangle per edge
+			//for (int i = 0; i < polygon.corners.Count; ++i)
+			//{
+			//	vertices[i + 1] = polygon.corners[i].position;
+			//	if (i == polygon.corners.Count - 1)
+			//		AddTriangle(i + 1, 1);
+			//	else
+			//		AddTriangle(i + 1, i + 2);
+			//}
+
 
 			Mesh mesh = new Mesh();
 			mesh.SetVertices(vertices);
@@ -183,6 +280,8 @@ namespace AtomosZ.Voronoi.Regions
 			return mesh;
 		}
 
+
+
 		/// <summary>
 		/// must be adjacent corners.
 		/// </summary>
@@ -200,44 +299,6 @@ namespace AtomosZ.Voronoi.Regions
 			triangles[triangleIndex++] = corner1;
 			triangles[triangleIndex++] = corner2;
 			triangles[triangleIndex++] = 0;
-		}
-
-		/// <summary>
-		/// Travels around the polygon, corner-by-corner and puts corners in order 
-		///  either clockwise or counterclockwise...currently no way to know which way :O
-		/// </summary>
-		private void OrderCorners()
-		{
-			List<Corner> ordered = new List<Corner>();
-			Corner first = polygon.corners[0];
-			ordered.Add(first);
-			List<Corner> neighbours = first.GetConnectedCornersIn(polygon);
-			Corner next = neighbours[0];
-
-			while (true)
-			{
-				ordered.Add(next);
-				neighbours = next.GetConnectedCornersIn(polygon);
-
-				if (!ordered.Contains(neighbours[0]))
-				{
-					next = neighbours[0];
-				}
-				else if (!ordered.Contains(neighbours[1]))
-				{
-					next = neighbours[1];
-				}
-				else
-				{
-					break;
-				}
-
-				if (ordered.Count > 10)
-					throw new System.Exception("We most certainly fucked up");
-			}
-
-
-			polygon.corners = ordered;
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using AtomosZ.Tutorials.FlatWorld;
 using AtomosZ.Tutorials.Planets;
 using AtomosZ.Voronoi.Regions;
 using UnityEngine;
@@ -25,7 +26,7 @@ namespace AtomosZ.Voronoi
 		};
 
 		public static VoronoiGenerator instance;
-		public static Random rng;
+		public Random rng;
 		public static float minSqrDistBetweenCorners;
 		public static float minDistCornerAndBorder;
 		public static bool MergeNearCorners;
@@ -40,10 +41,11 @@ namespace AtomosZ.Voronoi
 		public static List<Corner> debugCorners;
 		public static List<Polygon> debugPolygons;
 
+
 		private static Rect mapBounds;
 		private static float mapBoundsTolerance = .00001f;
 
-		public bool useRandomSeed = true;
+		public bool newRandomSeed = true;
 		public string randomSeed = "Seed";
 
 		[Range(1, 1024)]
@@ -61,8 +63,7 @@ namespace AtomosZ.Voronoi
 		[Range(0f, 1f)]
 		public float minEdgeLengthToMerge = .05f;
 
-		public ColorSettings colorSettings;
-
+		public bool mapDebugFoldout;
 		public bool viewDelaunayCircles = false;
 		public bool viewDelaunayTriangles = true;
 		public bool viewCenteroids = true;
@@ -80,24 +81,30 @@ namespace AtomosZ.Voronoi
 		public bool leftBorder = true;
 
 
-
 		public DelaunayGraph dGraph;
 		public VoronoiGraph vGraph;
 		public GameObject regionPrefab;
 		public Transform regionHolder;
 		public List<Region> regions;
+		public float heightScale = 5;
 
 		public bool mergeNearCorners = true;
 		public bool clampToMapBounds = true;
 		public bool createRegions = true;
 
-		[HideInInspector]
-		public LineRenderer lr;
-		public float t;
+		[Range(2, 256)]
+		public int resolution = 10;
+		public ColorSettings colorSettings;
+		public Tutorials.FlatWorld.NoiseSettings noiseSettings;
+
+
 		[Range(0, 7)]
 		public int subdivisions = 1;
 		[Range(0, 1)]
-		public float maxAmplitude = 1f;
+		public float amplitude;
+
+		// Noisy edge test variables
+		public bool debugNoisyLine;
 		public Vector3 startNoisy = Vector3.zero;
 		public Vector3 endNoisy = new Vector3(10, 0);
 		public Vector3 startControl = new Vector3(5, 5);
@@ -105,13 +112,20 @@ namespace AtomosZ.Voronoi
 		[HideInInspector]
 		public bool wasReset;
 
-
 		[HideInInspector]
-		public bool colorSettingsFoldout;
+		public LineRenderer lr;
+
 		private ColorGenerator colorGenerator = new ColorGenerator();
+		private HeightMap heightMap;
+		
 
 
 		void Start()
+		{
+			GenerateMap();
+		}
+
+		public void OnShapeSettingsUpdated()
 		{
 			GenerateMap();
 		}
@@ -124,6 +138,8 @@ namespace AtomosZ.Voronoi
 		public void ClearMap()
 		{
 			VEdge.count = 0;
+			Polygon.count = 0;
+			Region.count = 0;
 			debugEdges = new List<VEdge>();
 			debugCorners = new List<Corner>();
 			debugPolygons = new List<Polygon>();
@@ -138,8 +154,9 @@ namespace AtomosZ.Voronoi
 
 		private void CreateRNG()
 		{
-			if (useRandomSeed)
+			if (newRandomSeed)
 				randomSeed = System.DateTime.Now.Ticks.ToString();
+			instance = this;
 			rng = new Random(randomSeed.GetHashCode());
 		}
 
@@ -150,6 +167,7 @@ namespace AtomosZ.Voronoi
 			ClearMap();
 
 			CreateRNG();
+
 			colorGenerator.UpdateSettings(colorSettings);
 
 			MergeNearCorners = mergeNearCorners;
@@ -211,19 +229,19 @@ namespace AtomosZ.Voronoi
 			}
 			catch (System.Exception ex)
 			{
-				useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
+				newRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
 				Debug.LogException(ex);
 			}
 		}
 
-
-		public static float GetNewT()
+	
+		public static float GetNewT(float midT)
 		{
-			float rnd = (float)rng.NextDouble();
-			return ((1 - instance.maxAmplitude) * .5f) + (rnd * instance.maxAmplitude);
+			float rnd = (float)instance.rng.NextDouble();
+			return Mathf.Lerp(midT, rnd, instance.amplitude);
 		}
 
-		public void GenerateNoisyLine()
+		public LineRenderer GenerateNoisyLine()
 		{
 			ClearMap();
 			CreateRNG();
@@ -237,38 +255,9 @@ namespace AtomosZ.Voronoi
 			lr.numCapVertices = 20;
 			lr.positionCount = (int)Mathf.Pow(2, subdivisions) + 1;
 
-			t = GetNewT();
-
-			List<Vector3> segments = CreateSegments(startControl, endControl, startNoisy, endNoisy, subdivisions, t);
-			segments.Insert(0, startNoisy);
-			segments.Add(endNoisy);
-			lr.SetPositions(segments.ToArray());
+			return lr;
 		}
 
-		private List<Vector3> CreateSegments(Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2, int subdivisions, float t)
-		{
-			List<Vector3> segments = new List<Vector3>();
-
-			Vector3 midPoint = Vector3.Lerp(control1, control2, t);
-			if (subdivisions > 1)
-			{
-				float t1 = GetNewT();
-				float t2 = GetNewT();
-				Vector3 edgeCenter1 = (line1 + control1) * .5f;
-				Vector3 edgeCenter2 = (line1 + control2) * .5f;
-				segments.AddRange(CreateSegments(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, t1));
-
-				segments.Add(midPoint);
-
-				Vector3 edgeCenter3 = (line2 + control1) * .5f;
-				Vector3 edgeCenter4 = (line2 + control2) * .5f;
-				segments.AddRange(CreateSegments(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, t2));
-			}
-			else
-				segments.Add(midPoint);
-
-			return segments;
-		}
 
 		/// <summary>
 		/// NOT TESTED!
@@ -315,6 +304,7 @@ namespace AtomosZ.Voronoi
 		/// <param name="cuttingCorners"></param>
 		/// <param name="cornerCut"></param>
 		/// <returns></returns>
+		[System.Obsolete]
 		public static bool TryGetCornerIntersections(Polygon polygon, out VEdge cornerCuttingEdge, out byte cornerCut)
 		{
 			cornerCuttingEdge = null;
@@ -359,6 +349,7 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
+		[System.Obsolete]
 		public static Corner GetClosestCornerToMapCorner(Polygon currentPolygon, out Corner mapCorner)
 		{
 			// find closest mapCorner to polygon. Realistically, if all corners don't share the same 
@@ -593,7 +584,7 @@ namespace AtomosZ.Voronoi
 		public static bool TryGetBoundsIntersection(Polygon polygon, out Dictionary<VEdge, Vector2> intersections)
 		{
 			intersections = new Dictionary<VEdge, Vector2>();
-			foreach (var edge in polygon.voronoiEdges)
+			foreach (var edge in polygon.GetVoronoiEdges())
 			{
 				if (TryGetFirstMapBoundsIntersection(edge.start.position, edge.end.position, out Vector2 intersectPoint))
 				{
@@ -616,7 +607,7 @@ namespace AtomosZ.Voronoi
 			completelyOOB = new List<VEdge>();
 			partialOOB = new List<VEdge>();
 
-			foreach (var edge in polygon.voronoiEdges)
+			foreach (var edge in polygon.GetVoronoiEdges())
 			{
 				bool startOOB = !IsInMapBounds(edge.start.position);
 				bool endOOB = !IsInMapBounds(edge.end.position);
@@ -629,9 +620,9 @@ namespace AtomosZ.Voronoi
 			return completelyOOB.Count > 0 || partialOOB.Count > 0;
 		}
 
-		public static List<Vector2> FindMapBoundsIntersection(Vector2 lineStart, Vector2 lineEnd)
+		public static List<Vector3> FindMapBoundsIntersection(Vector3 lineStart, Vector3 lineEnd)
 		{
-			List<Vector2> intersections = new List<Vector2>();
+			List<Vector3> intersections = new List<Vector3>();
 			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 leftSide))
 				intersections.Add(leftSide);
 			if (TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out Vector2 topSide))
@@ -713,7 +704,7 @@ namespace AtomosZ.Voronoi
 		}
 
 
-		private static bool TryGetLineIntersections(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint, out float t1, out float t2)
+		public static bool TryGetLineIntersections(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out Vector2 intersectPoint, out float t1, out float t2)
 		{
 			float dx12 = p1.x - p2.x;
 			float dy12 = p1.y - p2.y;

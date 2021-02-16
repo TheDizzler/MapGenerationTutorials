@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -10,12 +9,15 @@ namespace AtomosZ.Voronoi
 	/// </summary>
 	public class Polygon
 	{
+		public static int count = 0;
+
+		public int id = 0;
 		public Centroid centroid;
 		public List<Corner> corners = new List<Corner>();
 		/// <summary>
 		/// Edges that seperate polygons.
 		/// </summary>
-		public List<VEdge> voronoiEdges = new List<VEdge>();
+		private List<VEdge> voronoiEdges = new List<VEdge>();
 		public List<Corner> oobCorners = new List<Corner>();
 		/// <summary>
 		/// Polygon has at least one corner on a map border.
@@ -26,6 +28,7 @@ namespace AtomosZ.Voronoi
 
 		public Polygon(Centroid centroidSite)
 		{
+			id = count++;
 			centroid = centroidSite;
 
 			GetCornersAndEdges();
@@ -42,6 +45,79 @@ namespace AtomosZ.Voronoi
 			}
 
 			return name;
+		}
+
+
+		public List<VEdge> GetVoronoiEdges()
+		{
+			return voronoiEdges;
+		}
+
+		public void Add(VEdge edge)
+		{
+			voronoiEdges.Add(edge);
+		}
+
+		public void Remove(VEdge edge)
+		{
+			voronoiEdges.Remove(edge);
+		}
+
+		public bool Contains(VEdge edge)
+		{
+			return voronoiEdges.Contains(edge);
+		}
+
+		public void SortEdges()
+		{
+			// Sort edges
+			List<VEdge> newOrder = new List<VEdge>();
+			List<Corner> newCornerOrder = new List<Corner>();
+			VEdge last = voronoiEdges[0];
+			newOrder.Add(last);
+			voronoiEdges.Remove(last);
+
+			for (int i = 0; i < voronoiEdges.Count;)
+			{
+				VEdge current = voronoiEdges[i];
+				if (current.SharesCorner(last, out Corner sharedCorner))
+				{
+					newCornerOrder.Add(sharedCorner);
+					newOrder.Add(current);
+					voronoiEdges.Remove(current);
+					last = current;
+					i = 0;
+				}
+				else
+					++i;
+			}
+
+			if (voronoiEdges.Count != 0)
+				throw new System.Exception("Faaaaawk");
+
+			if (!last.SharesCorner(newOrder[0], out Corner shared))
+				throw new System.Exception("All hell broke loose");
+			newCornerOrder.Insert(0, shared);
+
+			if (newCornerOrder.Count != corners.Count)
+				throw new System.Exception("Fawrk");
+
+			corners = newCornerOrder;
+			voronoiEdges = newOrder;
+
+			for (int i = 1; i < voronoiEdges.Count; ++i)
+			{
+				if (!voronoiEdges[i].SharesCorner(voronoiEdges[i - 1], out Corner noneed))
+					Debug.Log("Srsly?");
+			}
+
+			for (int i = 1; i < corners.Count; ++i)
+			{
+				if (newCornerOrder[i].FindSharedEdgeWith(newCornerOrder[i - 1]) == null)
+				{
+					throw new System.Exception("All hell broke loose");
+				}
+			}
 		}
 
 		private void GetCornersAndEdges()
@@ -72,8 +148,10 @@ namespace AtomosZ.Voronoi
 			if (voronoiEdges.Count < 3)
 			{
 				Invalidate();
+				return;
 			}
 		}
+
 
 		public void Invalidate()
 		{
@@ -90,12 +168,12 @@ namespace AtomosZ.Voronoi
 
 		public void CenterCentroid()
 		{
-			Vector2 total = Vector2.zero;
+			Vector3 total = Vector3.zero;
 			int count = 0;
 			foreach (var corner in corners)
 			{
-					total += corner.position;
-					++count;
+				total += corner.position;
+				++count;
 			}
 
 			centroid.position = total / count;
@@ -114,7 +192,7 @@ namespace AtomosZ.Voronoi
 		/// <summary>
 		/// Corners may get merged or removed, so 
 		/// </summary>
-		public Vector2 realCenter;
+		public Vector3 realCenter;
 		public float radius;
 		public float radiusSqr;
 		public List<DEdge> edges;
@@ -126,7 +204,7 @@ namespace AtomosZ.Voronoi
 		private Corner corner;
 
 
-		public DelaunayTriangle(Centroid p1, Centroid p2, Centroid p3, Vector2 center, float radius)
+		public DelaunayTriangle(Centroid p1, Centroid p2, Centroid p3, Vector3 center, float radius)
 		{
 			this.p1 = p1;
 			this.p2 = p2;

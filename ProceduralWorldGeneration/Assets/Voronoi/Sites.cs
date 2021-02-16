@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -188,10 +189,10 @@ namespace AtomosZ.Voronoi
 
 	public abstract class Site
 	{
-		public Vector2 position;
+		public Vector3 position;
 
 
-		public Site(Vector2 pos)
+		public Site(Vector3 pos)
 		{
 			position = pos;
 		}

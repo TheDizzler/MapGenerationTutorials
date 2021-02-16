@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -7,14 +8,22 @@ namespace AtomosZ.Voronoi
 {
 	public class VEdge : Edge<Corner>
 	{
+		/// <summary>
+		/// Just a little nudge to pop the border out a bit for visibility.
+		/// </summary>
+		public static readonly Vector3 borderZOffset = new Vector3(0, 0, -.25f);
 		public static int count = 0;
-		private static float minSegmentLengthToSubdivide = .5f;
+		private static float minSegmentLengthToSubdivide = .75f;
 
 		public List<Vector3> segments;
 
 		private List<Polygon> polygons = new List<Polygon>();
 		private DEdge pairedEdge;
-		
+		/// <summary>
+		/// A constraint to prevent sharp, ugly jaggies.
+		/// </summary>
+		private float maxSegmentDistanceFromOrigin;
+
 
 		public VEdge(Corner p1, Corner p2) : base(p1, p2)
 		{
@@ -83,55 +92,36 @@ namespace AtomosZ.Voronoi
 				return;
 			}
 
+			maxSegmentDistanceFromOrigin = Vector3.Distance(start.position, end.position) * .5f;
+
 			if (subdivisions > 0)
 			{
 				segments = CreateSegments(
-					pairedEdge.start.position, pairedEdge.end.position, start.position, end.position,
-					subdivisions, VoronoiGenerator.GetNewT());
-				segments.Insert(0, start.position);
+					pairedEdge.start.position + borderZOffset,
+					pairedEdge.end.position + borderZOffset,
+					start.position + borderZOffset,
+					end.position + borderZOffset,
+					subdivisions, -t1, VoronoiGenerator.GetNewT(-t1));
+				segments.Insert(0, start.position + borderZOffset);
 			}
 			else
 			{
 				segments = new List<Vector3>();
-				segments.Add(start.position);
+				segments.Add(start.position + borderZOffset);
 			}
 
-			
-			segments.Add(end.position);
+			segments.Add(end.position + borderZOffset);
 		}
 
-		private void CreateSimpleBorder()
+		public void ReverseSegments()
 		{
-			segments = new List<Vector3>();
-			segments.Add(start.position);
-			segments.Add(end.position);
+			segments.Reverse();
+			var temp = start;
+			start = end;
+			end = temp;
 		}
 
-		private static List<Vector3> CreateSegments(Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2, int subdivisions, float t)
-		{
-			List<Vector3> segmentPoints = new List<Vector3>();
-
-			Vector3 midPoint = Vector3.Lerp(control1, control2, t);
-			if (subdivisions > 1 && Vector3.Distance(line1, line2) > minSegmentLengthToSubdivide)
-			{
-				float t1 = VoronoiGenerator.GetNewT();
-				float t2 = VoronoiGenerator.GetNewT();
-				Vector3 edgeCenter1 = (line1 + control1) * .5f;
-				Vector3 edgeCenter2 = (line1 + control2) * .5f;
-				segmentPoints.AddRange(CreateSegments(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, t1));
-
-				segmentPoints.Add(midPoint);
-
-				Vector3 edgeCenter3 = (line2 + control1) * .5f;
-				Vector3 edgeCenter4 = (line2 + control2) * .5f;
-				segmentPoints.AddRange(CreateSegments(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, t2));
-			}
-			else
-				segmentPoints.Add(midPoint);
-
-			return segmentPoints;
-		}
-
+		
 		/// <summary>
 		/// Replaces oldSite with newSite in this edge, using newSites position and all other properties.
 		/// Connects newSite with polygons this edge is border of but does not remove oldSite from polygons.
@@ -164,6 +154,8 @@ namespace AtomosZ.Voronoi
 
 		public bool SharesCorner(VEdge lastEdge, out Corner sharedCorner)
 		{
+			if (lastEdge == this)
+				throw new System.Exception("Trying to find shared corner with self");
 			sharedCorner = null;
 			if (lastEdge.Contains(start))
 				sharedCorner = start;
@@ -193,6 +185,46 @@ namespace AtomosZ.Voronoi
 					shared.Add(poly);
 			}
 			return shared;
+		}
+
+		private void CreateSimpleBorder()
+		{
+			segments = new List<Vector3>();
+			segments.Add(start.position + borderZOffset);
+			segments.Add(end.position + borderZOffset);
+		}
+
+		private List<Vector3> CreateSegments(Vector3 control1, Vector3 control2,
+			Vector3 line1, Vector3 line2, int subdivisions, float tMid, float t)
+		{
+			List<Vector3> segmentPoints = new List<Vector3>();
+
+			Vector3 midPoint = Vector3.Lerp(control1, control2, t);
+
+			float dist = Vector3.Distance(midPoint, line1);
+			if (dist > maxSegmentDistanceFromOrigin)
+			{
+				midPoint = Vector3.MoveTowards(midPoint, line1, dist - maxSegmentDistanceFromOrigin);
+			}
+
+			if (subdivisions > 1 && Vector3.Distance(line1, line2) > minSegmentLengthToSubdivide)
+			{
+				float t1 = VoronoiGenerator.GetNewT(tMid);
+				float t2 = VoronoiGenerator.GetNewT(tMid);
+				Vector3 edgeCenter1 = (line1 + control1) * .5f;
+				Vector3 edgeCenter2 = (line1 + control2) * .5f;
+				segmentPoints.AddRange(CreateSegments(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, tMid, t1));
+
+				segmentPoints.Add(midPoint);
+
+				Vector3 edgeCenter3 = (line2 + control1) * .5f;
+				Vector3 edgeCenter4 = (line2 + control2) * .5f;
+				segmentPoints.AddRange(CreateSegments(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, tMid, t2));
+			}
+			else
+				segmentPoints.Add(midPoint);
+
+			return segmentPoints;
 		}
 	}
 

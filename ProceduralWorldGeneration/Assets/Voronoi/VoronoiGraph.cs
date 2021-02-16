@@ -102,7 +102,7 @@ namespace AtomosZ.Voronoi
 					opposite.connectedEdges.Remove(edge);
 					foreach (var poly in removingCorner.polygons)
 					{
-						poly.voronoiEdges.Remove(edge);
+						poly.Remove(edge);
 					}
 				}
 
@@ -121,7 +121,10 @@ namespace AtomosZ.Voronoi
 
 
 			foreach (Polygon polygon in polygons)
+			{
 				polygon.CenterCentroid();
+				polygon.SortEdges();
+			}
 		}
 
 
@@ -181,10 +184,14 @@ namespace AtomosZ.Voronoi
 			{
 				boundCrossingEdges = GetBoundCrossingEdges();
 				// Sort edges clockwise starting from top left
-				boundCrossingEdges[MapSide.Top].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x < e2.intersectPosition.x ? -1 : 1; });
-				boundCrossingEdges[MapSide.Right].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y > e2.intersectPosition.y ? -1 : 1; });
-				boundCrossingEdges[MapSide.Bottom].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.x > e2.intersectPosition.x ? -1 : 1; });
-				boundCrossingEdges[MapSide.Left].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2) { return e1.intersectPosition.y < e2.intersectPosition.y ? -1 : 1; });
+				boundCrossingEdges[MapSide.Top].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2)
+				{ return e1.intersectPosition.x < e2.intersectPosition.x ? -1 : 1; });
+				boundCrossingEdges[MapSide.Right].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2)
+				{ return e1.intersectPosition.y > e2.intersectPosition.y ? -1 : 1; });
+				boundCrossingEdges[MapSide.Bottom].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2)
+				{ return e1.intersectPosition.x > e2.intersectPosition.x ? -1 : 1; });
+				boundCrossingEdges[MapSide.Left].Sort(delegate (BoundaryCrossingEdge e1, BoundaryCrossingEdge e2)
+				{ return e1.intersectPosition.y < e2.intersectPosition.y ? -1 : 1; });
 
 				if (generator.debugBorders)
 				{
@@ -211,7 +218,7 @@ namespace AtomosZ.Voronoi
 			{
 				System.IO.File.WriteAllLines(logFilePath + "BoundsClampIssue_" + generator.randomSeed + ".txt", logMsgs);
 				Debug.LogException(ex);
-				generator.useRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
+				generator.newRandomSeed = false; // make sure we stay on this seed until the problem has been rectified
 				generator.createRegions = false;
 				return false;
 			}
@@ -225,7 +232,8 @@ namespace AtomosZ.Voronoi
 			MapSide nextMapSide = mapSide == MapSide.Left ? MapSide.Top : (MapSide)((int)mapSide * 2);
 			Corner firstMapCorner = mapCorners[(byte)((byte)mapSide + (byte)previousMapSide)];
 			Corner lastMapCorner = mapCorners[(byte)((byte)mapSide + (byte)nextMapSide)];
-			Polygon firstCornerPolygon = firstMapCorner.polygons[0]; ;
+			Polygon firstCornerPolygon = firstMapCorner.polygons[0];
+			;
 			Polygon lastCornerPolygon = lastMapCorner.polygons[0];
 
 
@@ -435,7 +443,7 @@ namespace AtomosZ.Voronoi
 			var polygons = edge.GetPolygons();
 			foreach (var polygon in polygons)
 			{
-				polygon.voronoiEdges.Remove(edge);
+				polygon.Remove(edge);
 			}
 
 			RemoveEdgeFrom(p1, edge);

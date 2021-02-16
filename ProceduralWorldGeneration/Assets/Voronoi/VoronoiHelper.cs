@@ -28,14 +28,14 @@ namespace AtomosZ.Voronoi.Helpers
 
 		public static void Associate(Polygon polygon, VEdge edge)
 		{
-			if (polygon.voronoiEdges.Contains(edge))
+			if (polygon.Contains(edge))
 			{
 				VoronoiGenerator.debugEdges.Add(edge);
 				VoronoiGenerator.debugPolygons.Add(polygon);
 				throw new Exception("polygon already contains this edge");
 			}
 
-			polygon.voronoiEdges.Add(edge);
+			polygon.Add(edge);
 
 			if (edge.Contains(polygon))
 			{
