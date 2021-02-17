@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi.Regions
@@ -14,7 +15,6 @@ namespace AtomosZ.Voronoi.Regions
 		[SerializeField] private GameObject borderRenderer = null;
 		[SerializeField] private Transform borders = null;
 
-		private Polygon polygon;
 		[HideInInspector]
 		public Polygon polygon;
 		private MeshFilter meshFilter;
@@ -24,7 +24,7 @@ namespace AtomosZ.Voronoi.Regions
 		/// Index 0 == polygon centroid.
 		/// </summary>
 		public Vector3[] vertices;
-		public int[] triangles;
+		public List<int> triangles;
 
 		private int triangleIndex = 0;
 
@@ -58,7 +58,7 @@ namespace AtomosZ.Voronoi.Regions
 			{
 				edge.CreateNoisyEdge(VoronoiGenerator.instance.subdivisions);
 				GameObject border = Instantiate(borderRenderer, borders);
-				
+
 				LineRenderer lr = border.GetComponent<LineRenderer>();
 				lr.useWorldSpace = false;
 				lr.startColor = Color.black;
@@ -77,7 +77,7 @@ namespace AtomosZ.Voronoi.Regions
 			for (int i = 1; i < vEdges.Count; ++i)
 			{
 				if (!vEdges[i].SharesCorner(vEdges[i - 1], out Corner noneed))
-					Debug.Log("polygon " + polygon.id + " Srsly?");
+					Debug.Log("polygon " + polygon.id + " Srsly?"); // should be able to remove this check after a little more testing
 			}
 
 			VEdge last = vEdges[0];
@@ -85,13 +85,13 @@ namespace AtomosZ.Voronoi.Regions
 			{
 				var current = vEdges[i];
 				if (!last.SharesCorner(current, out Corner sharedCorner))
-				{
+				{// should be able to remove this check after a little more testing
 					throw new System.Exception("Fark in region " + id);
 				}
 
 				if (sharedCorner != last.end)
 				{
-					if (i != 1)
+					if (i != 1) // should be able to remove this check after a little more testing
 						throw new System.Exception("we're farked");
 					last.ReverseSegments();
 				}
@@ -185,6 +185,7 @@ namespace AtomosZ.Voronoi.Regions
 
 		private Mesh CreateMesh()
 		{
+			// get all vertices from noisy edges
 			List<Vector3> edgeVertices = new List<Vector3>();
 			edgeVertices.Add(polygon.centroid.position);
 			var corners = polygon.corners;
@@ -200,108 +201,75 @@ namespace AtomosZ.Voronoi.Regions
 						edgeVertices.Add(point);
 			}
 
-			vertices = new Vector3[edgeVertices.Count];
 
-
-			triangles = new int[(edgeVertices.Count - 1) * 3];
-			vertices = edgeVertices.ToArray();
-			for (int i = 1; i < edgeVertices.Count; ++i)
+			Vector3 up = Vector3.Cross(edgeVertices[1] - edgeVertices[0], edgeVertices[2] - edgeVertices[0]);
+			if (up.z > 0)
 			{
-				if (i == edgeVertices.Count - 1)
-					AddTriangle(i, 1);
-				else
-					AddTriangle(i, i + 1);
+				Debug.Log("Region: " + id + " is reversed! up: " + up);
+				edgeVertices.Reverse();
+				Vector3 moveToLast = edgeVertices[0];
+				edgeVertices[0] = edgeVertices[edgeVertices.Count - 1];
+				edgeVertices[edgeVertices.Count - 1] = moveToLast;
 			}
+			vertices = new Vector3[edgeVertices.Count * 2 - 1]; // don't need the central vertex for bottom
 
-			///Using the Triangulator - does not work with central vertex
-			//for (int i = 0; i < edgeVertices.Count; ++i)
-			//	vertices[i] = edgeVertices[i];
-			//Triangulator tr = new Triangulator(vertices);
-			//var tris = tr.Triangulate();
-			////triangles = tris;
+			triangles = new List<int>();
+			Vector3[] bottomVerts = new Vector3[edgeVertices.Count - 1];
+			int topTriCount = (edgeVertices.Count - 1) * 3;
 
-			//int[] verticesFound = new int[vertices.Length];
-			//foreach (var tri in tris)
-			//{
-			//	verticesFound[tri] += 1;
-			//}
+			for (int i = 0; i < edgeVertices.Count; ++i)
+				vertices[i] = edgeVertices[i];
+			int vertexIndex;
+			for (vertexIndex = 1; vertexIndex < edgeVertices.Count; ++vertexIndex)
+			{
+				/// make top face
+				if (vertexIndex == edgeVertices.Count - 1)
+				{
+					triangles.Add(vertexIndex);
+					triangles.Add(1);
+					triangles.Add(0);
+				}
+				else
+				{
+					triangles.Add(vertexIndex);
+					triangles.Add(vertexIndex + 1);
+					triangles.Add(0);
+				}
 
-			//List<int> lostVerts = new List<int>();
-			//for (int i = 0; i < verticesFound.Length; ++i)
-			//{
-			//	if (verticesFound[i] < 2)
-			//		lostVerts.Add(i);
+				// make mirrored bottom face but with no central vertex
+				bottomVerts[vertexIndex - 1] = edgeVertices[vertexIndex] + new Vector3(0, 0, 10);
+				vertices[vertexIndex + edgeVertices.Count - 1] = bottomVerts[vertexIndex - 1];
 
-			//}
-			//triangles = new int[(edgeVertices.Count - 1) * 3];
-			//for (int i = 0; i < tris.Length; ++i)
-			//	triangles[i] = tris[i];
-			//triangles[triangles.Length - 3] = lostVerts[1];
-			//triangles[triangles.Length - 2] = lostVerts[0];
-			//triangles[triangles.Length - 1] = 0;
+				/// create triangles that make up the sides of the polygon
+				if (vertexIndex == edgeVertices.Count - 1)
+				{
+					triangles.Add(edgeVertices.Count);
+					triangles.Add(1);
+					triangles.Add(vertexIndex);
 
+					triangles.Add(vertexIndex + edgeVertices.Count - 1);
+					triangles.Add(edgeVertices.Count);
+					triangles.Add(vertexIndex);
+				}
+				else
+				{
+					triangles.Add(vertexIndex + edgeVertices.Count);
+					triangles.Add(vertexIndex + 1);
+					triangles.Add(vertexIndex);
 
-			Debug.Log("Region " + id + " vertices " + vertices.Length);
-			Debug.Log("Region " + id + " triangles " + triangles.Length);
-
-
-			/// Simple polygon - corners only
-			//vertices = new Vector3[polygon.corners.Count + 1]; // each corner plus the center
-			//vertices[0] = polygon.centroid.position;
-
-			//// make triangles using two corners plus center
-			//triangles = new int[polygon.voronoiEdges.Count * 3]; // one triangle per edge
-			//for (int i = 0; i < polygon.corners.Count; ++i)
-			//{
-			//	vertices[i + 1] = polygon.corners[i].position;
-			//	if (i == polygon.corners.Count - 1)
-			//		AddTriangle(i + 1, 1);
-			//	else
-			//		AddTriangle(i + 1, i + 2);
-			//}
-
+					triangles.Add(vertexIndex + edgeVertices.Count - 1);
+					triangles.Add(vertexIndex + edgeVertices.Count);
+					triangles.Add(vertexIndex);
+				}
+				// bottom is not closed off
+			}
 
 			Mesh mesh = new Mesh();
 			mesh.SetVertices(vertices);
-			mesh.triangles = triangles;
+			mesh.triangles = triangles.ToArray();
 			mesh.RecalculateNormals();
 
-			List<Vector3> normals = new List<Vector3>();
-			mesh.GetNormals(normals);
-			if (normals[0].z > 0) // corners were in reverse order
-			{
-				vertices = vertices.Reverse().ToArray();
-				Vector3 moveToLast = vertices[0];
-				vertices[0] = vertices[vertices.Length - 1];
-				vertices[vertices.Length - 1] = moveToLast;
-				mesh.SetVertices(vertices);
-				polygon.corners.Reverse();
-
-			}
-
-			mesh.RecalculateNormals();
 			return mesh;
-		}
-
-
-
-		/// <summary>
-		/// must be adjacent corners.
-		/// </summary>
-		/// <param name="corner1"></param>
-		/// <param name="corner2"></param>
-		private void AddTriangle(int corner1, int corner2)
-		{
-			if ((triangleIndex + 2) >= triangles.Length)
-			{
-				VoronoiGenerator.debugPolygons.Add(polygon);
-				throw new System.Exception("Triangles exceeds our allocation. Index required: " + (triangleIndex + 2) + ". Allocated: " + triangles.Length
-					+ "\nPolygon: " + polygon.centroid.position);
-			}
-
-			triangles[triangleIndex++] = corner1;
-			triangles[triangleIndex++] = corner2;
-			triangles[triangleIndex++] = 0;
 		}
 	}
 }
