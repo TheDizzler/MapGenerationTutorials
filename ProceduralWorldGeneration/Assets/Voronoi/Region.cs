@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi.Regions
@@ -59,7 +58,9 @@ namespace AtomosZ.Voronoi.Regions
 			{
 				edge.CreateNoisyEdge(VoronoiGenerator.instance.subdivisions);
 				GameObject border = Instantiate(borderRenderer, borders);
+				
 				LineRenderer lr = border.GetComponent<LineRenderer>();
+				lr.useWorldSpace = false;
 				lr.startColor = Color.black;
 				lr.endColor = Color.black;
 				lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
@@ -69,6 +70,8 @@ namespace AtomosZ.Voronoi.Regions
 
 				lr.positionCount = edge.segments.Count;
 				lr.SetPositions(edge.segments.ToArray());
+
+				border.transform.localPosition = VEdge.borderZOffset;
 			}
 
 			for (int i = 1; i < vEdges.Count; ++i)

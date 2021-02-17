@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using AtomosZ.Voronoi.Helpers;
 using UnityEngine;
 
@@ -11,7 +10,7 @@ namespace AtomosZ.Voronoi
 		/// <summary>
 		/// Just a little nudge to pop the border out a bit for visibility.
 		/// </summary>
-		public static readonly Vector3 borderZOffset = new Vector3(0, 0, -.25f);
+		public static readonly Vector3 borderZOffset = new Vector3(0, 0, -.15f);
 		public static int count = 0;
 		private static float minSegmentLengthToSubdivide = .75f;
 
@@ -97,20 +96,20 @@ namespace AtomosZ.Voronoi
 			if (subdivisions > 0)
 			{
 				segments = CreateSegments(
-					pairedEdge.start.position + borderZOffset,
-					pairedEdge.end.position + borderZOffset,
-					start.position + borderZOffset,
-					end.position + borderZOffset,
+					pairedEdge.start.position,
+					pairedEdge.end.position,
+					start.position,
+					end.position,
 					subdivisions, -t1, VoronoiGenerator.GetNewT(-t1));
-				segments.Insert(0, start.position + borderZOffset);
+				segments.Insert(0, start.position);
 			}
 			else
 			{
 				segments = new List<Vector3>();
-				segments.Add(start.position + borderZOffset);
+				segments.Add(start.position);
 			}
 
-			segments.Add(end.position + borderZOffset);
+			segments.Add(end.position);
 		}
 
 		public void ReverseSegments()
@@ -121,7 +120,7 @@ namespace AtomosZ.Voronoi
 			end = temp;
 		}
 
-		
+
 		/// <summary>
 		/// Replaces oldSite with newSite in this edge, using newSites position and all other properties.
 		/// Connects newSite with polygons this edge is border of but does not remove oldSite from polygons.
@@ -190,8 +189,8 @@ namespace AtomosZ.Voronoi
 		private void CreateSimpleBorder()
 		{
 			segments = new List<Vector3>();
-			segments.Add(start.position + borderZOffset);
-			segments.Add(end.position + borderZOffset);
+			segments.Add(start.position);
+			segments.Add(end.position);
 		}
 
 		private List<Vector3> CreateSegments(Vector3 control1, Vector3 control2,
