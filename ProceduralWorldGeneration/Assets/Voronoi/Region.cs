@@ -285,47 +285,82 @@ namespace AtomosZ.Voronoi.Regions
 			topMesh.triangles = topTriangles.ToArray();
 			topMeshFilter.sharedMesh = topMesh;
 
-			sideVertices = new Vector3[edgeVertices.Count * 2];
-			Vector3[] normals = new Vector3[sideVertices.Length];
+			sideVertices = new Vector3[edgeVertices.Count * 6]; // top and bottom and 3 copies (one for each triangle)
 			sideTriangles = new List<int>();
 			topTriangles = new List<int>();
-			for (int vertexIndex = 0; vertexIndex < sideVertices.Length; vertexIndex += 2)
+			for (int vertexIndex = 0; vertexIndex < sideVertices.Length; vertexIndex += 6)
 			{
-				sideVertices[vertexIndex] = edgeVertices[vertexIndex / 2];
-				sideVertices[vertexIndex + 1] = sideVertices[vertexIndex] + new Vector3(0, 0, 5);
-
-				if (vertexIndex == sideVertices.Length - 2)
+				int edgeVertex = vertexIndex / 6;
+				if (edgeVertex == edgeVertices.Count - 1)
 				{
-					sideTriangles.Add(vertexIndex);     // top
-					sideTriangles.Add(vertexIndex + 1); // bottom
-					sideTriangles.Add(0); // top
+					sideVertices[vertexIndex] = edgeVertices[edgeVertex];
+					sideVertices[vertexIndex + 1] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 2] = edgeVertices[0];
 
-					sideTriangles.Add(vertexIndex + 1); // bottom
-					sideTriangles.Add(1); // bottom 
-					sideTriangles.Add(0); // top
+					sideVertices[vertexIndex + 3] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 4] = edgeVertices[0] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 5] = edgeVertices[0];
 				}
 				else
 				{
-					sideTriangles.Add(vertexIndex);     // top
-					sideTriangles.Add(vertexIndex + 1); // bottom
-					sideTriangles.Add(vertexIndex + 2); // top
+					sideVertices[vertexIndex] = edgeVertices[edgeVertex];
+					sideVertices[vertexIndex + 1] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 2] = edgeVertices[edgeVertex + 1];
 
-					sideTriangles.Add(vertexIndex + 1); // bottom
-					sideTriangles.Add(vertexIndex + 3); // bottom 
-					sideTriangles.Add(vertexIndex + 2); // top
+					sideVertices[vertexIndex + 3] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 4] = edgeVertices[edgeVertex + 1] + new Vector3(0, 0, 5);
+					sideVertices[vertexIndex + 5] = edgeVertices[edgeVertex + 1];
 				}
+
+				sideTriangles.Add(vertexIndex);     // top
+				sideTriangles.Add(vertexIndex + 1); // bottom
+				sideTriangles.Add(vertexIndex + 2); // top
+
+				sideTriangles.Add(vertexIndex + 3);  // top
+				sideTriangles.Add(vertexIndex + 4); // bottom
+				sideTriangles.Add(vertexIndex + 5); // top
+
+				Vector3 normal = SurfaceNormalFromIndices(
+					sideVertices[vertexIndex], sideVertices[vertexIndex + 1], sideVertices[vertexIndex + 2]);
 			}
-			
+
 			sideMesh = new Mesh();
 			sideMesh.SetVertices(sideVertices);
 			sideMesh.triangles = sideTriangles.ToArray();
-			//sideMesh.normals = CalculateNormals(sideVertices, sideTriangles);
 			sideMesh.RecalculateNormals();
 			sideMeshFilter.sharedMesh = sideMesh;
 		}
 
+		private Vector3[] CalculateNormals(Vector3[] vertices, List<int> triangles)
+		{
+			Vector3[] vertexNormals = new Vector3[vertices.Length];
+			int triangleCount = triangles.Count / 3;
+			for (int i = 0; i < triangleCount; ++i)
+			{
+				int normalTriangleIndex = i * 3;
+				int vertexIndexA = triangles[normalTriangleIndex];
+				int vertexIndexB = triangles[normalTriangleIndex + 1];
+				int vertexIndexC = triangles[normalTriangleIndex + 2];
 
-			return mesh;
+				Vector3 triangleNormal = SurfaceNormalFromIndices(
+					vertices[vertexIndexA], vertices[vertexIndexB], vertices[vertexIndexC]);
+				vertexNormals[vertexIndexA] += triangleNormal;
+				vertexNormals[vertexIndexB] += triangleNormal;
+				vertexNormals[vertexIndexC] += triangleNormal;
+			}
+
+
+			for (int i = 0; i < vertexNormals.Length; ++i)
+				vertexNormals[i].Normalize();
+
+			return vertexNormals;
+		}
+
+		private Vector3 SurfaceNormalFromIndices(Vector3 pointA, Vector3 pointB, Vector3 pointC)
+		{
+			Vector3 sideAB = pointB - pointA;
+			Vector3 sideAC = pointC - pointA;
+			return Vector3.Cross(sideAB, sideAC).normalized;
 		}
 	}
 }
