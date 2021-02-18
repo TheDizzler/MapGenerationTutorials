@@ -17,19 +17,32 @@ namespace AtomosZ.Voronoi.Regions
 
 		[HideInInspector]
 		public Polygon polygon;
-		private MeshFilter meshFilter;
-		private Mesh mesh;
+		private Mesh topMesh;
+		private MeshFilter topMeshFilter;
+		private MeshRenderer topMeshRenderer;
+		private Mesh sideMesh;
+		private MeshFilter sideMeshFilter;
+		private MeshRenderer sideMeshRenderer;
+
+
 
 		/// <summary>
 		/// Index 0 == polygon centroid.
 		/// </summary>
-		public Vector3[] vertices;
-		public List<int> triangles;
+		private Vector3[] topVertices;
+		private Vector3[] sideVertices;
+		//private Vector2[] uvs;
+		private List<int> topTriangles;
+		private List<int> sideTriangles;
+		/// <summary>
+		/// The vertices that make up the border of the region PLUS the center (index 0)
+		/// </summary>
+		private List<Vector3> edgeVertices;
 
-		private int triangleIndex = 0;
 
 
-		public void CreateRegion(Polygon poly, Tutorials.Planets.ColorSettings colorSettings)
+
+		public void CreateRegion(Polygon poly)
 		{
 			id = count++;
 			polygon = poly;
@@ -37,19 +50,63 @@ namespace AtomosZ.Voronoi.Regions
 
 			CreateNoisyEdges();
 
-			meshFilter = GetComponent<MeshFilter>();
-			mesh = CreateMesh();
-			meshFilter.sharedMesh = mesh;
-			GetComponent<MeshRenderer>().sharedMaterial = colorSettings.planetMaterial;
+			GameObject topMeshGO = new GameObject();
+			topMeshGO.transform.SetParent(transform, false);
+			topMeshGO.name = "top mesh";
+			topMeshFilter = topMeshGO.AddComponent<MeshFilter>();
+			topMeshRenderer = topMeshGO.AddComponent<MeshRenderer>();
+
+			GameObject sideMeshGO = new GameObject();
+			sideMeshGO.transform.SetParent(transform, false);
+			sideMeshGO.name = "side mesh";
+			sideMeshFilter = sideMeshGO.AddComponent<MeshFilter>();
+			sideMeshRenderer = sideMeshGO.AddComponent<MeshRenderer>();
+
+			CreateMeshes();
+
 			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
-			meshCollider.sharedMesh = mesh;
-
-
-
-
-			//CreateBorder();
+			meshCollider.sharedMesh = topMesh;
 		}
 
+
+
+		public void SetRegionHeight(Tutorials.FlatWorld.NoiseSettings noiseSettings, float heightScale, Material regionMat)
+		{
+			regionHeight = Tutorials.FlatWorld.Noise.GetHeightAtPoint(polygon.centroid.position, noiseSettings);
+			this.heightScale = heightScale;
+			borders.transform.localPosition = new Vector3(0, 0, regionHeight * heightScale) + VEdge.borderZOffset;
+			//UpdateMeshHeights();
+			topMeshRenderer.sharedMaterial = regionMat;
+			sideMeshRenderer.sharedMaterial = regionMat;
+
+			topMesh.RecalculateNormals();
+			//sideMesh.RecalculateNormals();
+		}
+
+		public void UpdateMeshHeights()
+		{
+			var verts = topMeshFilter.sharedMesh.vertices;
+			Vector3[] normals = new Vector3[verts.Length];
+			for (int i = 0; i < edgeVertices.Count; ++i)
+			{
+				verts[i].z = regionHeight * heightScale;
+			}
+			topMeshFilter.sharedMesh.SetVertices(verts);
+
+			//bakedNormals = CalculateNormals();
+			//mesh.normals = bakedNormals;
+
+			topMesh.RecalculateNormals();
+			//FlatShading();
+			//mesh.uv = uvs;
+
+		}
+
+
+		public void ToggleBorder(bool bordersEnabled)
+		{
+			borders.gameObject.SetActive(bordersEnabled);
+		}
 
 		private void CreateNoisyEdges()
 		{
@@ -57,8 +114,8 @@ namespace AtomosZ.Voronoi.Regions
 			foreach (VEdge edge in vEdges)
 			{
 				edge.CreateNoisyEdge(VoronoiGenerator.instance.subdivisions);
-				GameObject border = Instantiate(borderRenderer, borders);
 
+				GameObject border = Instantiate(borderRenderer, borders);
 				LineRenderer lr = border.GetComponent<LineRenderer>();
 				lr.useWorldSpace = false;
 				lr.startColor = Color.black;
@@ -184,11 +241,10 @@ namespace AtomosZ.Voronoi.Regions
 		}
 
 
-		private Mesh CreateMesh()
+		private void CreateMeshes()
 		{
 			// get all vertices from noisy edges
 			edgeVertices = new List<Vector3>();
-			edgeVertices.Add(polygon.centroid.position);
 
 			var vedges = polygon.GetVoronoiEdges();
 			for (int i = 0; i < vedges.Count; ++i)
@@ -198,73 +254,76 @@ namespace AtomosZ.Voronoi.Regions
 						edgeVertices.Add(point);
 			}
 
-			Vector3 up = Vector3.Cross(edgeVertices[1] - edgeVertices[0], edgeVertices[2] - edgeVertices[0]);
+			Vector3 up = Vector3.Cross(edgeVertices[0] - polygon.centroid.position, edgeVertices[1] - polygon.centroid.position);
 			if (up.z > 0)
 			{ // edges are wound in the wrong order
 				edgeVertices.Reverse();
-				Vector3 moveToLast = edgeVertices[0];
-				edgeVertices[0] = edgeVertices[edgeVertices.Count - 1];
-				edgeVertices[edgeVertices.Count - 1] = moveToLast;
 			}
 
-			vertices = new Vector3[edgeVertices.Count * 2 - 1]; // don't need the central vertex for bottom
-			uvs = new Vector2[vertices.Length];
-
-			triangles = new List<int>();
-			Vector3[] bottomVerts = new Vector3[edgeVertices.Count - 1];
-			int topTriCount = (edgeVertices.Count - 1) * 3;
-
-			for (int i = 0; i < edgeVertices.Count; ++i)
-				vertices[i] = edgeVertices[i];
-			int vertexIndex;
-			for (vertexIndex = 1; vertexIndex < edgeVertices.Count; ++vertexIndex)
+			topVertices = new Vector3[edgeVertices.Count + 1];
+			topVertices[0] = polygon.centroid.position;
+			topTriangles = new List<int>();
+			for (int vertexIndex = 1; vertexIndex < topVertices.Length; ++vertexIndex)
 			{
-				/// make top face
-				if (vertexIndex == edgeVertices.Count - 1)
+				topVertices[vertexIndex] = edgeVertices[vertexIndex - 1];
+				if (vertexIndex == topVertices.Length - 1)
 				{
-					triangles.Add(vertexIndex);
-					triangles.Add(1);
-					triangles.Add(0);
+					topTriangles.Add(vertexIndex);
+					topTriangles.Add(1);
+					topTriangles.Add(0);
 				}
 				else
 				{
-					triangles.Add(vertexIndex);
-					triangles.Add(vertexIndex + 1);
-					triangles.Add(0);
+					topTriangles.Add(vertexIndex);
+					topTriangles.Add(vertexIndex + 1);
+					topTriangles.Add(0);
 				}
-
-				// make mirrored bottom face but with no central vertex
-				bottomVerts[vertexIndex - 1] = edgeVertices[vertexIndex] + new Vector3(0, 0, 10);
-				vertices[vertexIndex + edgeVertices.Count - 1] = bottomVerts[vertexIndex - 1];
-
-				/// create triangles that make up the sides of the polygon
-				if (vertexIndex == edgeVertices.Count - 1)
-				{
-					triangles.Add(edgeVertices.Count);
-					triangles.Add(1);
-					triangles.Add(vertexIndex);
-
-					triangles.Add(vertexIndex + edgeVertices.Count - 1);
-					triangles.Add(edgeVertices.Count);
-					triangles.Add(vertexIndex);
-				}
-				else
-				{
-					triangles.Add(vertexIndex + edgeVertices.Count);
-					triangles.Add(vertexIndex + 1);
-					triangles.Add(vertexIndex);
-
-					triangles.Add(vertexIndex + edgeVertices.Count - 1);
-					triangles.Add(vertexIndex + edgeVertices.Count);
-					triangles.Add(vertexIndex);
-				}
-				// bottom is not closed off
 			}
 
-			Mesh mesh = new Mesh();
-			mesh.SetVertices(vertices);
-			mesh.triangles = triangles.ToArray();
-			mesh.RecalculateNormals();
+			topMesh = new Mesh();
+			topMesh.SetVertices(topVertices);
+			topMesh.triangles = topTriangles.ToArray();
+			topMeshFilter.sharedMesh = topMesh;
+
+			sideVertices = new Vector3[edgeVertices.Count * 2];
+			Vector3[] normals = new Vector3[sideVertices.Length];
+			sideTriangles = new List<int>();
+			topTriangles = new List<int>();
+			for (int vertexIndex = 0; vertexIndex < sideVertices.Length; vertexIndex += 2)
+			{
+				sideVertices[vertexIndex] = edgeVertices[vertexIndex / 2];
+				sideVertices[vertexIndex + 1] = sideVertices[vertexIndex] + new Vector3(0, 0, 5);
+
+				if (vertexIndex == sideVertices.Length - 2)
+				{
+					sideTriangles.Add(vertexIndex);     // top
+					sideTriangles.Add(vertexIndex + 1); // bottom
+					sideTriangles.Add(0); // top
+
+					sideTriangles.Add(vertexIndex + 1); // bottom
+					sideTriangles.Add(1); // bottom 
+					sideTriangles.Add(0); // top
+				}
+				else
+				{
+					sideTriangles.Add(vertexIndex);     // top
+					sideTriangles.Add(vertexIndex + 1); // bottom
+					sideTriangles.Add(vertexIndex + 2); // top
+
+					sideTriangles.Add(vertexIndex + 1); // bottom
+					sideTriangles.Add(vertexIndex + 3); // bottom 
+					sideTriangles.Add(vertexIndex + 2); // top
+				}
+			}
+			
+			sideMesh = new Mesh();
+			sideMesh.SetVertices(sideVertices);
+			sideMesh.triangles = sideTriangles.ToArray();
+			//sideMesh.normals = CalculateNormals(sideVertices, sideTriangles);
+			sideMesh.RecalculateNormals();
+			sideMeshFilter.sharedMesh = sideMesh;
+		}
+
 
 			return mesh;
 		}
