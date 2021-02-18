@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi.Regions
@@ -11,7 +10,8 @@ namespace AtomosZ.Voronoi.Regions
 		public int id = 0;
 		public float nudgeToCenterAmount = .2f;
 		public float borderWidth = .127f;
-
+		public float regionHeight;
+		private float heightScale;
 		[SerializeField] private GameObject borderRenderer = null;
 		[SerializeField] private Transform borders = null;
 
@@ -75,31 +75,31 @@ namespace AtomosZ.Voronoi.Regions
 			regionHeight = Tutorials.FlatWorld.Noise.GetHeightAtPoint(polygon.centroid.position, noiseSettings);
 			this.heightScale = heightScale;
 			borders.transform.localPosition = new Vector3(0, 0, regionHeight * heightScale) + VEdge.borderZOffset;
-			//UpdateMeshHeights();
+			UpdateMeshHeights();
 			topMeshRenderer.sharedMaterial = regionMat;
 			sideMeshRenderer.sharedMaterial = regionMat;
 
-			topMesh.RecalculateNormals();
-			//sideMesh.RecalculateNormals();
 		}
 
 		public void UpdateMeshHeights()
 		{
 			var verts = topMeshFilter.sharedMesh.vertices;
-			Vector3[] normals = new Vector3[verts.Length];
-			for (int i = 0; i < edgeVertices.Count; ++i)
+			//Vector3[] normals = new Vector3[verts.Length];
+			float regionScaled = regionHeight * heightScale;
+			for (int i = 0; i < verts.Length; ++i)
 			{
-				verts[i].z = regionHeight * heightScale;
+				verts[i].z = regionScaled;
 			}
 			topMeshFilter.sharedMesh.SetVertices(verts);
-
-			//bakedNormals = CalculateNormals();
-			//mesh.normals = bakedNormals;
-
 			topMesh.RecalculateNormals();
-			//FlatShading();
-			//mesh.uv = uvs;
 
+			verts = sideMeshFilter.sharedMesh.vertices;
+			for (int i = 0; i < verts.Length; i += 2)
+			{
+				verts[i].z = regionScaled;
+			}
+			sideMeshFilter.sharedMesh.SetVertices(verts);
+			sideMesh.RecalculateNormals();
 		}
 
 
@@ -127,7 +127,6 @@ namespace AtomosZ.Voronoi.Regions
 
 				lr.positionCount = edge.segments.Count;
 				lr.SetPositions(edge.segments.ToArray());
-
 				border.transform.localPosition = VEdge.borderZOffset;
 			}
 
@@ -158,37 +157,6 @@ namespace AtomosZ.Voronoi.Regions
 
 				last = current;
 			}
-		}
-
-		/// <summary>
-		/// Corners are nudged inwards a bit to create distinction between polygons and prevent overlapping borders.
-		/// </summary>
-		private void CreateBorder()
-		{
-			LineRenderer lr = gameObject.AddComponent<LineRenderer>();
-			lr.startColor = Color.black;
-			lr.endColor = Color.black;
-			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
-			lr.widthMultiplier = borderWidth;
-			lr.positionCount = vertices.Length + 1;
-			lr.numCapVertices = 20;
-
-			int i;
-			Vector3 vert;
-			Vector3 dirToCenter;
-			Vector3 adjustedPos;
-			for (i = 1; i < vertices.Length; ++i)
-			{
-				vert = vertices[i];
-				dirToCenter = (vert - (Vector3)polygon.centroid.position).normalized;
-				adjustedPos = vert - dirToCenter * nudgeToCenterAmount;
-				lr.SetPosition(i - 1, adjustedPos);
-			}
-
-			vert = vertices[1]; // index 0 is center!
-			dirToCenter = (vert - (Vector3)polygon.centroid.position).normalized;
-			adjustedPos = vert - dirToCenter * nudgeToCenterAmount;
-			lr.SetPosition(i - 1, adjustedPos);
 		}
 
 
@@ -298,8 +266,8 @@ namespace AtomosZ.Voronoi.Regions
 					sideVertices[vertexIndex + 2] = edgeVertices[0];
 
 					sideVertices[vertexIndex + 3] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
-					sideVertices[vertexIndex + 4] = edgeVertices[0] + new Vector3(0, 0, 5);
-					sideVertices[vertexIndex + 5] = edgeVertices[0];
+					sideVertices[vertexIndex + 4] = edgeVertices[0];
+					sideVertices[vertexIndex + 5] = edgeVertices[0] + new Vector3(0, 0, 5);
 				}
 				else
 				{
@@ -308,26 +276,23 @@ namespace AtomosZ.Voronoi.Regions
 					sideVertices[vertexIndex + 2] = edgeVertices[edgeVertex + 1];
 
 					sideVertices[vertexIndex + 3] = edgeVertices[edgeVertex] + new Vector3(0, 0, 5);
-					sideVertices[vertexIndex + 4] = edgeVertices[edgeVertex + 1] + new Vector3(0, 0, 5);
-					sideVertices[vertexIndex + 5] = edgeVertices[edgeVertex + 1];
+					sideVertices[vertexIndex + 4] = edgeVertices[edgeVertex + 1];
+					sideVertices[vertexIndex + 5] = edgeVertices[edgeVertex + 1] + new Vector3(0, 0, 5);
+
 				}
 
 				sideTriangles.Add(vertexIndex);     // top
 				sideTriangles.Add(vertexIndex + 1); // bottom
 				sideTriangles.Add(vertexIndex + 2); // top
 
-				sideTriangles.Add(vertexIndex + 3);  // top
-				sideTriangles.Add(vertexIndex + 4); // bottom
-				sideTriangles.Add(vertexIndex + 5); // top
-
-				Vector3 normal = SurfaceNormalFromIndices(
-					sideVertices[vertexIndex], sideVertices[vertexIndex + 1], sideVertices[vertexIndex + 2]);
+				sideTriangles.Add(vertexIndex + 5); // bottom
+				sideTriangles.Add(vertexIndex + 4); // top
+				sideTriangles.Add(vertexIndex + 3); // bottom
 			}
 
 			sideMesh = new Mesh();
 			sideMesh.SetVertices(sideVertices);
 			sideMesh.triangles = sideTriangles.ToArray();
-			sideMesh.RecalculateNormals();
 			sideMeshFilter.sharedMesh = sideMesh;
 		}
 
