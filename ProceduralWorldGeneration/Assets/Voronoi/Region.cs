@@ -183,35 +183,32 @@ namespace AtomosZ.Voronoi.Regions
 			}
 		}
 
+
 		private Mesh CreateMesh()
 		{
 			// get all vertices from noisy edges
-			List<Vector3> edgeVertices = new List<Vector3>();
+			edgeVertices = new List<Vector3>();
 			edgeVertices.Add(polygon.centroid.position);
-			var corners = polygon.corners;
-			for (int i = 0; i < corners.Count; ++i)
+
+			var vedges = polygon.GetVoronoiEdges();
+			for (int i = 0; i < vedges.Count; ++i)
 			{
-				VEdge edge;
-				if (i == corners.Count - 1)
-					edge = corners[i].FindSharedEdgeWith(corners[0]);
-				else
-					edge = corners[i].FindSharedEdgeWith(corners[i + 1]);
-				foreach (var point in edge.segments)
+				foreach (var point in vedges[i].segments)
 					if (!edgeVertices.Contains(point))
 						edgeVertices.Add(point);
 			}
 
-
 			Vector3 up = Vector3.Cross(edgeVertices[1] - edgeVertices[0], edgeVertices[2] - edgeVertices[0]);
 			if (up.z > 0)
-			{
-				Debug.Log("Region: " + id + " is reversed! up: " + up);
+			{ // edges are wound in the wrong order
 				edgeVertices.Reverse();
 				Vector3 moveToLast = edgeVertices[0];
 				edgeVertices[0] = edgeVertices[edgeVertices.Count - 1];
 				edgeVertices[edgeVertices.Count - 1] = moveToLast;
 			}
+
 			vertices = new Vector3[edgeVertices.Count * 2 - 1]; // don't need the central vertex for bottom
+			uvs = new Vector2[vertices.Length];
 
 			triangles = new List<int>();
 			Vector3[] bottomVerts = new Vector3[edgeVertices.Count - 1];
