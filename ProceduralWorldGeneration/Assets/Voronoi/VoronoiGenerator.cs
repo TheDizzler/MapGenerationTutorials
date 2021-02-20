@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using AtomosZ.Tutorials.FlatWorld;
-using AtomosZ.Tutorials.Planets;
 using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 using Random = System.Random;
@@ -80,13 +78,11 @@ namespace AtomosZ.Voronoi
 		public bool bottomBorder = true;
 		public bool leftBorder = true;
 
-
 		public DelaunayGraph dGraph;
 		public VoronoiGraph vGraph;
 		public GameObject regionPrefab;
 		public Transform regionHolder;
 		public List<Region> regions;
-		public float heightScale = 5;
 
 		public bool mergeNearCorners = true;
 		public bool clampToMapBounds = true;
@@ -94,14 +90,17 @@ namespace AtomosZ.Voronoi
 
 		[Range(2, 256)]
 		public int resolution = 10;
-		public ColorSettings colorSettings;
-		public Tutorials.FlatWorld.NoiseSettings noiseSettings;
+		public VoronoiNoiseSettings noiseSettings;
+		public VoronoiHeightMapSettings heightMapSettings;
 
-
+		public bool bordersEnabled = true;
 		[Range(0, 7)]
 		public int subdivisions = 1;
 		[Range(0, 1)]
 		public float amplitude;
+
+		public Material regionMaterial;
+		public MeshRenderer noisePreviewMeshRenderer;
 
 		// Noisy edge test variables
 		public bool debugNoisyLine;
@@ -115,9 +114,8 @@ namespace AtomosZ.Voronoi
 		[HideInInspector]
 		public LineRenderer lr;
 
-		private ColorGenerator colorGenerator = new ColorGenerator();
 		private HeightMap heightMap;
-		
+		public bool borderSettingsFoldout;
 
 
 		void Start()
@@ -133,6 +131,16 @@ namespace AtomosZ.Voronoi
 		public void OnColorSettingsUpdated()
 		{
 			GenerateMap();
+		}
+
+		public void ToggleBorders(bool borders)
+		{
+			bordersEnabled = borders;
+			if (regions != null)
+			{
+				foreach (var region in regions)
+					region.ToggleBorder(bordersEnabled);
+			}
 		}
 
 		public void ClearMap()
@@ -167,8 +175,6 @@ namespace AtomosZ.Voronoi
 			ClearMap();
 
 			CreateRNG();
-
-			colorGenerator.UpdateSettings(colorSettings);
 
 			MergeNearCorners = mergeNearCorners;
 
@@ -234,14 +240,14 @@ namespace AtomosZ.Voronoi
 			}
 		}
 
-	
+
 		public static float GetNewT(float midT)
 		{
 			float rnd = (float)instance.rng.NextDouble();
 			return Mathf.Lerp(midT, rnd, instance.amplitude);
 		}
 
-		public LineRenderer GenerateNoisyLine()
+		public LineRenderer GenerateNoisyLineDebug()
 		{
 			ClearMap();
 			CreateRNG();
@@ -751,12 +757,34 @@ namespace AtomosZ.Voronoi
 				return;
 			regions = new List<Region>();
 
+			HeightMap heightMap = VoronoiHeightMapGenerator.GenerateHeightMap(
+				noiseSettings.mapResolution * mapWidth, noiseSettings.mapResolution * mapHeight, heightMapSettings, noiseSettings, Vector2.zero);
+			DrawNoiseTexture(VoronoiTextureGenerator.TextureFromHeightMap(heightMap));
+
 			foreach (var polygon in vGraph.polygons)
 			{
-				GameObject region = Instantiate(regionPrefab, regionHolder);
-				regions.Add(region.GetComponent<Region>());
-				region.GetComponent<Region>().CreateRegion(polygon);
+				GameObject regionGO = Instantiate(regionPrefab, regionHolder);
+				Region region = regionGO.GetComponent<Region>();
+				regions.Add(region);
+				region.CreateRegion(polygon);
+				region.ToggleBorder(bordersEnabled);
 			}
+
+
+			// set average height of region
+			foreach (var region in regions)
+			{
+				regionMaterial.SetFloat("minHeight", heightMapSettings.minHeight);
+				regionMaterial.SetFloat("maxHeight", heightMapSettings.maxHeight);
+				region.SetRegionHeight(noiseSettings.mapResolution, heightMap.values, regionMaterial);
+			}
+
+		public void DrawNoiseTexture(Texture2D texture)
+		{
+			noisePreviewMeshRenderer.sharedMaterial.mainTexture = texture;
+			noisePreviewMeshRenderer.transform.localScale = new Vector3(texture.width, texture.height, 10) / 10;
+
+			noisePreviewMeshRenderer.gameObject.SetActive(true);
 		}
 
 		private bool IsTooNear(List<Centroid> sites, Vector2 site)

@@ -11,9 +11,10 @@ namespace AtomosZ.Voronoi.EditorTools
 		{
 			using (var check = new EditorGUI.ChangeCheckScope())
 			{
+				Region region = ((Region)target);
 				base.OnInspectorGUI();
-				if (check.changed)
-					((Region)target).HeightChanged();
+				if (check.changed && region.polygon != null)
+					region.UpdateMeshHeights();
 			}
 		}
 	}

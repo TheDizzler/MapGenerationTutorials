@@ -10,8 +10,8 @@ namespace AtomosZ.Voronoi.Regions
 		public int id = 0;
 		public float nudgeToCenterAmount = .2f;
 		public float borderWidth = .127f;
+		[Tooltip("This is negative because -z is up, +z is down")]
 		public float regionHeight;
-		private float heightScale;
 		[SerializeField] private GameObject borderRenderer = null;
 		[SerializeField] private Transform borders = null;
 
@@ -70,11 +70,12 @@ namespace AtomosZ.Voronoi.Regions
 
 
 
-		public void SetRegionHeight(Tutorials.FlatWorld.NoiseSettings noiseSettings, float heightScale, Material regionMat)
-		{
-			regionHeight = Tutorials.FlatWorld.Noise.GetHeightAtPoint(polygon.centroid.position, noiseSettings);
-			this.heightScale = heightScale;
-			borders.transform.localPosition = new Vector3(0, 0, regionHeight * heightScale) + VEdge.borderZOffset;
+		public void SetRegionHeight(int mapResolution, float[,] heightMapValues, Material regionMat)
+		{ 
+			regionHeight = -heightMapValues[ // negative because -z is up, +z is down
+				(int)(polygon.centroid.position.x * mapResolution), 
+				(int)(polygon.centroid.position.y * mapResolution)];
+			borders.transform.localPosition = new Vector3(0, 0, regionHeight) + VEdge.borderZOffset;
 			UpdateMeshHeights();
 			topMeshRenderer.sharedMaterial = regionMat;
 			sideMeshRenderer.sharedMaterial = regionMat;
@@ -85,7 +86,7 @@ namespace AtomosZ.Voronoi.Regions
 		{
 			var verts = topMeshFilter.sharedMesh.vertices;
 			//Vector3[] normals = new Vector3[verts.Length];
-			float regionScaled = regionHeight * heightScale;
+			float regionScaled = regionHeight;
 			for (int i = 0; i < verts.Length; ++i)
 			{
 				verts[i].z = regionScaled;

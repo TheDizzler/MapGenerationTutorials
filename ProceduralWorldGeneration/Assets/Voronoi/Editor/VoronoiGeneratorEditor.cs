@@ -19,12 +19,10 @@ namespace AtomosZ.Voronoi.EditorTools
 		public bool colorSettingsFoldout;
 		public bool shapeSettingsFoldout;
 		private bool mapGenerationSettingsFoldout = true;
-		private bool borderSettingsFoldout;
 
 
 		public override void OnInspectorGUI()
 		{
-			//base.OnInspectorGUI();
 			VoronoiGenerator gen = (VoronoiGenerator)target;
 			mapGenerationSettingsFoldout = EditorGUILayout.Foldout(mapGenerationSettingsFoldout, new GUIContent("Map Generation Settings"));
 			if (mapGenerationSettingsFoldout)
@@ -40,19 +38,23 @@ namespace AtomosZ.Voronoi.EditorTools
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("minEdgeLengthToMerge"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("mergeNearCorners"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("clampToMapBounds"));
-				EditorGUILayout.PropertyField(serializedObject.FindProperty("heightScale"));
 			}
 
-			borderSettingsFoldout = EditorGUILayout.Foldout(borderSettingsFoldout, new GUIContent("Border Settings"));
-			if (borderSettingsFoldout)
+			gen.borderSettingsFoldout = EditorGUILayout.Foldout(gen.borderSettingsFoldout, new GUIContent("Border Settings"));
+			if (gen.borderSettingsFoldout)
 			{
+				bool borders = EditorGUILayout.Toggle(new GUIContent("Show Borders"), gen.bordersEnabled);
+				if (borders != gen.bordersEnabled)
+					gen.ToggleBorders(borders);
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("subdivisions"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("amplitude"));
+				EditorGUILayout.PropertyField(serializedObject.FindProperty("regionMaterial"));
 			}
 
 
 			EditorGUILayout.PropertyField(serializedObject.FindProperty("regionPrefab"));
 			EditorGUILayout.PropertyField(serializedObject.FindProperty("regionHolder"));
+			EditorGUILayout.PropertyField(serializedObject.FindProperty("noisePreviewMeshRenderer"));
 
 			if (GUILayout.Button("Generate Voronoi"))
 			{
@@ -62,8 +64,7 @@ namespace AtomosZ.Voronoi.EditorTools
 			}
 
 			EditorGUILayout.PropertyField(serializedObject.FindProperty("noiseSettings"));
-			EditorGUILayout.PropertyField(serializedObject.FindProperty("colorSettings"));
-			DrawSettingsEditor(gen.colorSettings, gen.OnColorSettingsUpdated, ref colorSettingsFoldout, ref colorEditor);
+			EditorGUILayout.PropertyField(serializedObject.FindProperty("heightMapSettings"));
 
 			gen.mapDebugFoldout = EditorGUILayout.Foldout(gen.mapDebugFoldout, new GUIContent("Map Debug Settings"));
 			if (gen.mapDebugFoldout)
@@ -100,7 +101,7 @@ namespace AtomosZ.Voronoi.EditorTools
 					if (GUILayout.Button("Generate Noisy Line"))
 					{
 						AtomosZ.EditorTools.EditorUtils.ClearLogConsole();
-						gen.GenerateNoisyLine();
+						gen.GenerateNoisyLineDebug();
 						EditorUtility.SetDirty(target);
 					}
 				}
@@ -214,7 +215,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				if (quad == null || gen.wasReset)
 				{
 					if (VoronoiGenerator.instance == null)
-						gen.GenerateNoisyLine();
+						gen.GenerateNoisyLineDebug();
 					var lr = gen.lr;
 					VoronoiGenerator.TryGetLineIntersections(
 						gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy, out Vector2 intersectPoint, out float t1, out float t2);
