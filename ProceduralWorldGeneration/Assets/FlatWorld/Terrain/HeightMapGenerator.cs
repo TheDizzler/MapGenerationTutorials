@@ -12,8 +12,6 @@ namespace AtomosZ.Tutorials.FlatWorld
 			float minValue = float.MaxValue;
 			float maxValue = float.MinValue;
 
-		
-
 			for (int i = 0; i < width; ++i)
 			{
 				for (int j = 0; j < height; ++j)

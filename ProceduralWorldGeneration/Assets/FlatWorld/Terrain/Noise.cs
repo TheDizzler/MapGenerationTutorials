@@ -6,7 +6,6 @@ namespace AtomosZ.Tutorials.FlatWorld
 	{
 		public enum NormalizeMode { Local, Global }
 
-
 		public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, NoiseSettings noiseSettings, Vector2 sampleCenter)
 		{
 			System.Random rnd = new System.Random(noiseSettings.seed);

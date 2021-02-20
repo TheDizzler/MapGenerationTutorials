@@ -38,20 +38,19 @@ namespace AtomosZ.Tutorials.FlatWorld
 
 			HeightMap heightMap = HeightMapGenerator.GenerateHeightMap(
 				meshSettings.NumVertsPerLine, meshSettings.NumVertsPerLine, heightMapSettings, Vector2.zero);
-
-			MapPreview display = FindObjectOfType<MapPreview>();
+			
 			switch (drawMode)
 			{
 				case DrawMode.Noise:
-					display.DrawTexture(TextureGenerator.TextureFromHeightMap(heightMap));
+					DrawTexture(TextureGenerator.TextureFromHeightMap(heightMap));
 					break;
 				case DrawMode.FalloffMap:
-					display.DrawTexture(TextureGenerator.TextureFromHeightMap(new HeightMap(
+					DrawTexture(TextureGenerator.TextureFromHeightMap(new HeightMap(
 							FalloffGenerator.GenerateFalloffMap(meshSettings.NumVertsPerLine, heightMapSettings.falloffCurve),
 						0, 1)));
 					break;
 				case DrawMode.Mesh:
-					display.DrawMesh(MeshGenerator.GenerateTerrainMesh(
+					DrawMesh(MeshGenerator.GenerateTerrainMesh(
 							heightMap.values, meshSettings, editorPreviewLOD));
 					break;
 			}
@@ -61,7 +60,7 @@ namespace AtomosZ.Tutorials.FlatWorld
 		public void DrawTexture(Texture2D texture)
 		{
 			textureRenderer.sharedMaterial.mainTexture = texture;
-			textureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height) / 10;
+			textureRenderer.transform.localScale = new Vector3(texture.width, texture.height, 10) / 10;
 
 			textureRenderer.gameObject.SetActive(true);
 			meshFilter.gameObject.SetActive(false);

@@ -33,11 +33,11 @@
 		const static float epsilon = 1E-4;
 
 		int layerCount;
-		float3 baseColors[maxLayerCount];
-		float baseStartHeights[maxLayerCount];
-		float baseBlends[maxLayerCount];
-		float baseColorStrength[maxLayerCount];
-		float baseTextureScales[maxLayerCount];
+		float3 baseColors[maxColorCount];
+		float baseStartHeights[maxColorCount];
+		float baseBlends[maxColorCount];
+		float baseColorStrength[maxColorCount];
+		float baseTextureScales[maxColorCount];
 		float minHeight;
 		float maxHeight;
 

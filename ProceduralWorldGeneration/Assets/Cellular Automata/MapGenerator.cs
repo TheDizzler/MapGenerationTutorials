@@ -80,9 +80,10 @@ namespace AtomosZ.Tutorials.CellAuto
 			{
 				for (int y = keepBorder ? 1 : 0; y < (keepBorder ? height - 1 : height); ++y)
 				{
-					if (GetSurroundingWallCount(last, x, y) < minNeighboursToSurvive)
+					int wallCount = GetSurroundingWallCount(last, x, y);
+					if (wallCount < minNeighboursToSurvive)
 						map[x, y] = 0;
-					else if (GetSurroundingWallCount(last, x, y) > minNeighboursToSurvive)
+					else if (wallCount > minNeighboursToSurvive)
 						map[x, y] = 1;
 				}
 			}
