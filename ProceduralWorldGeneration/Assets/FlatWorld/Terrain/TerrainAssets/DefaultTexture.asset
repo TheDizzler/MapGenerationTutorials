@@ -12,10 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e51c5e743193a5345be17895a78da7c3, type: 3}
   m_Name: DefaultTexture
   m_EditorClassIdentifier: 
+  baseColors:
+  - {r: 0.11074066, g: 1, b: 0, a: 1}
+  - {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 1}
+  - {r: 1, g: 1, b: 1, a: 1}
+  baseStartHeights:
+  - 0
+  - 0.323
+  - 0.434
   layers:
   - texture: {fileID: 2800000, guid: 7d84a44fe5e46f642a5a0b3be0aeba1b, type: 3}
     tint: {r: 0.013883947, g: 0.11922805, b: 0.49056602, a: 0}
-    tintStrength: 0.62
+    tintStrength: 1
     startHeight: 0
     blendStrength: 0.324
     textureScale: 39.11

@@ -99,6 +99,7 @@ namespace AtomosZ.Voronoi
 		[Range(0, 1)]
 		public float amplitude;
 
+		public VoronoiTextureData textureData;
 		public Material regionMaterial;
 		public MeshRenderer noisePreviewMeshRenderer;
 
@@ -757,10 +758,12 @@ namespace AtomosZ.Voronoi
 				return;
 			regions = new List<Region>();
 
+			noiseSettings.seed = randomSeed;
 			HeightMap heightMap = VoronoiHeightMapGenerator.GenerateHeightMap(
 				noiseSettings.mapResolution * mapWidth, noiseSettings.mapResolution * mapHeight, heightMapSettings, noiseSettings, Vector2.zero);
 			DrawNoiseTexture(VoronoiTextureGenerator.TextureFromHeightMap(heightMap));
 
+			
 			foreach (var polygon in vGraph.polygons)
 			{
 				GameObject regionGO = Instantiate(regionPrefab, regionHolder);
@@ -770,14 +773,22 @@ namespace AtomosZ.Voronoi
 				region.ToggleBorder(bordersEnabled);
 			}
 
-
+			GenerateTexture();
+			
 			// set average height of region
 			foreach (var region in regions)
 			{
-				regionMaterial.SetFloat("minHeight", heightMapSettings.minHeight);
-				regionMaterial.SetFloat("maxHeight", heightMapSettings.maxHeight);
 				region.SetRegionHeight(noiseSettings.mapResolution, heightMap.values, regionMaterial);
 			}
+
+
+		public void GenerateTexture()
+		{
+			textureData.ApplyToMaterial(regionMaterial);
+			textureData.UpdateMeshHeights(regionMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
+			regionMaterial.SetFloat("minHeight", heightMapSettings.minHeight);
+			regionMaterial.SetFloat("maxHeight", heightMapSettings.maxHeight);
+		}
 
 		public void DrawNoiseTexture(Texture2D texture)
 		{

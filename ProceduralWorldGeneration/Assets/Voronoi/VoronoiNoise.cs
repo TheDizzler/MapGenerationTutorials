@@ -8,7 +8,7 @@ namespace AtomosZ.Voronoi
 
 		public static float GetHeightAtPoint(Vector2 point, VoronoiNoiseSettings noiseSettings)
 		{
-			System.Random rnd = new System.Random(noiseSettings.seed);
+			System.Random rnd = new System.Random(noiseSettings.seed.GetHashCode());
 			float amplitude = 1;
 			float frequency = 1;
 			float noiseHeight = 0;
@@ -39,7 +39,7 @@ namespace AtomosZ.Voronoi
 
 		public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, VoronoiNoiseSettings noiseSettings, Vector2 sampleCenter)
 		{
-			System.Random rnd = new System.Random(noiseSettings.seed);
+			System.Random rnd = new System.Random(noiseSettings.seed.GetHashCode());
 
 			float maxPossibleHeight = 0;
 			float amplitude = 1;
@@ -133,8 +133,10 @@ namespace AtomosZ.Voronoi
 		public float persistance = .6f;
 		[Min(1)]
 		public float lacunarity = 2;
-
-		public int seed;
 		public Vector2 offset;
+
+		[HideInInspector]
+		public string seed;
+		
 	}
 }

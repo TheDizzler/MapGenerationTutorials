@@ -30,7 +30,7 @@ namespace AtomosZ.Tutorials.FlatWorld
 		void Start()
 		{
 			gameObject.AddComponent<ThreadedDataRequester>();
-			textureSettings.ApplyToMaterial(mapMaterial);
+			textureSettings.ApplyToTextureMaterial(mapMaterial);
 			textureSettings.UpdateMeshHeights(mapMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
 
 			float maxViewDist = detailLevels[detailLevels.Length - 1].visibleDistThreshold;

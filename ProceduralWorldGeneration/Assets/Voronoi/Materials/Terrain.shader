@@ -25,12 +25,11 @@
 		const static int maxColorCount = 8;
 		const static float epsilon = 1E-4;
 
+		
 		int layerCount;
 		float3 baseColors[maxColorCount];
 		float baseStartHeights[maxColorCount];
-		float baseBlends[maxColorCount];
-		float baseColorStrength[maxColorCount];
-		float baseTextureScales[maxColorCount];
+
 		float minHeight;
 		float maxHeight;
 
@@ -44,12 +43,11 @@
 		void surf(Input IN, inout SurfaceOutputStandard o)
 		{
 			float heightPercent = InverseLerp(minHeight, maxHeight, IN.worldPos.y);
-			o.Albedo = heightPercent;
-			/*for (int i = 0; i < layerCount; ++i)
+			for (int i = 0; i < layerCount; ++i)
 			{
-				float drawStrength = InverseLerp(-baseBlends[i] / 2 - epsilon, baseBlends[i] / 2, heightPercent - baseStartHeights[i]);
+				float drawStrength = saturate(sign(heightPercent - baseStartHeights[i]));
 				o.Albedo = o.Albedo * (1 - drawStrength) + baseColors[i] * drawStrength;
-			}*/
+			}
 			
 		}
 		ENDCG

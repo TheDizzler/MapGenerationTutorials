@@ -7,6 +7,13 @@ namespace AtomosZ.Tutorials.FlatWorld
 	[CreateAssetMenu(menuName = "Terrain/FlatWorld/TextureData")]
 	public class TextureData : ScriptableObject
 	{
+		/// for color height maps
+		public Color[] baseColors;
+		[Range(0, 1)]
+		public float[] baseStartHeights;
+
+
+		/// For texture height maps
 		private const int textureSize = 512;
 		private const TextureFormat textureFormat = TextureFormat.RGB565;
 
@@ -16,7 +23,14 @@ namespace AtomosZ.Tutorials.FlatWorld
 		float savedMaxHeight;
 
 
-		public void ApplyToMaterial(Material material)
+		public void ApplyToColorMaterial(Material material)
+		{
+			material.SetInt("layerCount", baseColors.Length);
+			material.SetColorArray("baseColors", baseColors);
+			material.SetFloatArray("baseStartHeights", baseStartHeights);
+		}
+
+		public void ApplyToTextureMaterial(Material material)
 		{
 			material.SetInt("layerCount", layers.Length);
 			material.SetColorArray("baseColors", layers.Select(x => x.tint).ToArray());

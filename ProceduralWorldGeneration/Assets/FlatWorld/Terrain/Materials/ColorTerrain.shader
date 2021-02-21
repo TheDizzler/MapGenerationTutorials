@@ -26,7 +26,6 @@
 		struct Input
 		{
 			float3 worldPos;
-			float3 worldNormal;
 		};
 		
 		const static int maxColorCount = 8;
@@ -35,9 +34,6 @@
 		int layerCount;
 		float3 baseColors[maxColorCount];
 		float baseStartHeights[maxColorCount];
-		float baseBlends[maxColorCount];
-		float baseColorStrength[maxColorCount];
-		float baseTextureScales[maxColorCount];
 		float minHeight;
 		float maxHeight;
 
@@ -56,9 +52,8 @@
 				float drawStrength = InverseLerp(-baseBlends[i]/2 - epsilon, baseBlends[i]/2, heightPercent - baseStartHeights[i]);
 				o.Albedo = o.Albedo * (1-drawStrength) + baseColors[i] * drawStrength;
 			}
-			
 		}
 		ENDCG
 	}
-		FallBack "Diffuse"
+	FallBack "Diffuse"
 }

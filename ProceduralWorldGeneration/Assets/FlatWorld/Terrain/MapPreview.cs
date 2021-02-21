@@ -6,6 +6,7 @@ namespace AtomosZ.Tutorials.FlatWorld
 	{
 		public enum DrawMode { Noise, FalloffMap, Mesh }
 		public DrawMode drawMode;
+		public bool colorMap;
 
 		public Renderer textureRenderer;
 		public MeshFilter meshFilter;
@@ -13,14 +14,11 @@ namespace AtomosZ.Tutorials.FlatWorld
 		public MeshSettings meshSettings;
 		public HeightMapSettings heightMapSettings;
 		public TextureData textureData;
-		public Material terrainMaterial;
-
-
+		public Material textureTerrainMaterial;
+		public Material colorTerrainMaterial;
 
 		[Range(0, MeshSettings.NumSupportedLODs - 1)]
 		public int editorPreviewLOD;
-
-
 
 		private float[,] falloffMap;
 
@@ -32,13 +30,22 @@ namespace AtomosZ.Tutorials.FlatWorld
 
 		public void DrawMapInEditor()
 		{
-			textureData.ApplyToMaterial(terrainMaterial);
-			textureData.UpdateMeshHeights(terrainMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
-
+			if (colorMap)
+			{
+				textureData.ApplyToColorMaterial(colorTerrainMaterial);
+				textureData.UpdateMeshHeights(colorTerrainMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
+				meshRenderer.sharedMaterial = colorTerrainMaterial;
+			}
+			else
+			{
+				textureData.ApplyToTextureMaterial(textureTerrainMaterial);
+				textureData.UpdateMeshHeights(textureTerrainMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
+				meshRenderer.sharedMaterial = textureTerrainMaterial;
+			}
 
 			HeightMap heightMap = HeightMapGenerator.GenerateHeightMap(
 				meshSettings.NumVertsPerLine, meshSettings.NumVertsPerLine, heightMapSettings, Vector2.zero);
-			
+
 			switch (drawMode)
 			{
 				case DrawMode.Noise:
