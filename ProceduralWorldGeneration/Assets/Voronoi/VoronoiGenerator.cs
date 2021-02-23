@@ -155,13 +155,36 @@ namespace AtomosZ.Voronoi
 			debugEdges = new List<VEdge>();
 			debugCorners = new List<Corner>();
 			debugPolygons = new List<Polygon>();
-			if (regions != null)
-				foreach (var region in regions)
-					DestroyImmediate(region.gameObject);
+			ClearRegions();
 
 			regions = null;
 			dGraph = null;
 			vGraph = null;
+		}
+
+		private void ClearRegions()
+		{
+			bool failed = false;
+			if (regions != null)
+			{
+				foreach (var region in regions)
+				{
+					if (region == null)
+					{
+						Debug.LogWarning("region gameobject not found - WTF");
+						failed = true;
+					}
+					else
+						DestroyImmediate(region.gameObject);
+				}
+			}
+
+			if (failed)
+			{
+				regions = new List<Region>(FindObjectsOfType<Region>());
+				Debug.LogWarning("\tFound " + regions.Count + " lost regions");
+				ClearRegions();
+			}
 		}
 
 		private void CreateRNG()
