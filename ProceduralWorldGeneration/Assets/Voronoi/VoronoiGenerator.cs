@@ -329,99 +329,6 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
-		/// <summary>
-		/// Finds corner case where a polygon is in a corner but doesn't contain that corner.
-		/// INCOMPLETE.
-		/// </summary>
-		/// <param name="polygon"></param>
-		/// <param name="cuttingCorners"></param>
-		/// <param name="cornerCut"></param>
-		/// <returns></returns>
-		[System.Obsolete]
-		public static bool TryGetCornerIntersections(Polygon polygon, out VEdge cornerCuttingEdge, out byte cornerCut)
-		{
-			cornerCuttingEdge = null;
-			cornerCut = 0;
-
-			foreach (var corner in polygon.corners)
-			{
-				// if a connected edge thats in this polygon intersects border and a connected edge NOT in this polygon intersectes a DIFFERENT border
-				if (IsInMapBounds(corner.position))
-					continue; // ignore corners oob
-
-				List<VEdge> encasingEdges = new List<VEdge>();
-				List<MapSide> mapSidesCrossed = new List<MapSide>();
-				foreach (var edge in corner.connectedEdges)
-				{
-					if (!TryGetMapSideCross(edge.start.position, edge.end.position, out MapSide side))
-						continue; // edge does not cross map border
-
-					encasingEdges.Add(edge);
-					mapSidesCrossed.Add(side);
-				}
-
-				if (encasingEdges.Count >= 2)
-				{
-					MapSide side = mapSidesCrossed[0];
-					bool allSameSide = true;
-					for (int i = 1; i < mapSidesCrossed.Count; ++i)
-						if (mapSidesCrossed[i] != side)
-							allSameSide = false;
-					if (allSameSide)
-						continue; // uninteresting corner
-
-					// at this point we should have identified a corner that has atleast two edges that encase a map corner
-					// determine which edges are the corner enclosers
-					// by neccesity, corner encasing edges are only connected to one polygon
-					// which is not helpful if checking in the polygon creation phase
-					Debug.Log("Found corner!");
-				}
-			}
-
-
-			return false;
-		}
-
-		[System.Obsolete]
-		public static Corner GetClosestCornerToMapCorner(Polygon currentPolygon, out Corner mapCorner)
-		{
-			// find closest mapCorner to polygon. Realistically, if all corners don't share the same 
-			// closest mapCorner as the centroid of the polygon then the map should be too small to be valid/useful.
-			float closestSqrDist = float.MaxValue;
-			mapCorner = null;
-			foreach (var kvp in VoronoiGraph.mapCorners)
-			{
-				float dist = (currentPolygon.centroid.position - kvp.Value.position).sqrMagnitude;
-				if (dist < closestSqrDist)
-				{
-					closestSqrDist = dist;
-					mapCorner = kvp.Value;
-				}
-			}
-
-			Corner closestCorner = null;
-			closestSqrDist = float.MaxValue;
-			foreach (var corner in currentPolygon.corners)
-			{
-				float dist = (corner.position - mapCorner.position).sqrMagnitude;
-				if (dist < closestSqrDist)
-				{
-					closestSqrDist = dist;
-					closestCorner = corner;
-				}
-			}
-
-			return closestCorner;
-		}
-
-		[System.Obsolete]
-		public static bool IsOnBorder(Corner corner)
-		{
-			return Mathf.Approximately(corner.position.x, mapBounds.xMin)
-				|| Mathf.Approximately(corner.position.x, mapBounds.xMax)
-				|| Mathf.Approximately(corner.position.y, mapBounds.yMin)
-				|| Mathf.Approximately(corner.position.y, mapBounds.yMax);
-		}
 
 		/// <summary>
 		/// Returns MapSide.Inside if corner is not on border.
@@ -450,6 +357,7 @@ namespace AtomosZ.Voronoi
 				return MapSide.Top;
 			return MapSide.Inside;
 		}
+
 
 		public static bool TryGetCornerOOBofSameSideAs(Vector2 borderCoord, VEdge edge, out Corner sameSideCorner, out MapSide mapSide)
 		{
@@ -492,82 +400,6 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
-		public static bool GetCoordinateOfMapSide(Vector2 coordinateOnBorder, out MapSide mapSide, out float lockedCoord)
-		{
-			if (Mathf.Approximately(coordinateOnBorder.x, mapBounds.xMin))
-			{
-				mapSide = MapSide.Left;
-				lockedCoord = topLeft.x;
-				return true;
-			}
-
-			if (Mathf.Approximately(coordinateOnBorder.x, mapBounds.xMax))
-			{
-				mapSide = MapSide.Right;
-				lockedCoord = topRight.x;
-				return true;
-			}
-
-			if (Mathf.Approximately(coordinateOnBorder.y, mapBounds.yMin))
-			{
-				mapSide = MapSide.Bottom;
-				lockedCoord = bottomRight.y;
-				return true;
-			}
-
-			if (Mathf.Approximately(coordinateOnBorder.y, mapBounds.yMax))
-			{
-				mapSide = MapSide.Top;
-				lockedCoord = topLeft.y;
-				return true;
-			}
-
-			mapSide = MapSide.Inside;
-			lockedCoord = 0;
-			return false;
-		}
-
-		/// <summary>
-		/// Gets closest map corner to edge IF it crosses a map border.
-		/// If not, returns false.
-		/// </summary>
-		/// <param name="edge"></param>
-		/// <param name="cornerByte"></param>
-		/// <returns></returns>
-		public static bool TryGetClosestCorner(VEdge edge, out byte cornerByte)
-		{
-			Vector2 lineStart = edge.start.position;
-			Vector2 lineEnd = edge.end.position;
-			cornerByte = TopRightCornerByte;
-
-			if (!TryGetFirstMapBoundsIntersection(lineStart, lineEnd, out Vector2 intersectPoint))
-			{
-				return false;
-			}
-
-			float minDistance = Vector2.Distance(intersectPoint, topRight);
-
-			float toTopLeft = Vector2.Distance(intersectPoint, topLeft);
-			if (toTopLeft < minDistance)
-			{
-				minDistance = toTopLeft;
-				cornerByte = TopLeftCornerByte;
-			}
-			float toBottomLeft = Vector2.Distance(intersectPoint, bottomLeft);
-			if (toBottomLeft < minDistance)
-			{
-				minDistance = toBottomLeft;
-				cornerByte = BottomLeftCornerByte;
-			}
-			float toBottomRight = Vector2.Distance(intersectPoint, bottomRight);
-			if (toBottomRight < minDistance)
-			{
-				minDistance = toBottomRight;
-				cornerByte = BottomRightCornerByte;
-			}
-
-			return true;
-		}
 
 		public static bool TryGetMapSideCross(Vector2 lineStart, Vector2 lineEnd, out MapSide mapSide)
 		{
@@ -597,6 +429,7 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
+
 		public static bool LineIntersectsMapSide(Vector2 lineStart, Vector2 lineEnd, MapSide mapSide)
 		{
 			switch (mapSide)
@@ -614,44 +447,6 @@ namespace AtomosZ.Voronoi
 			return false;
 		}
 
-		public static bool TryGetBoundsIntersection(Polygon polygon, out Dictionary<VEdge, Vector2> intersections)
-		{
-			intersections = new Dictionary<VEdge, Vector2>();
-			foreach (var edge in polygon.GetVoronoiEdges())
-			{
-				if (TryGetFirstMapBoundsIntersection(edge.start.position, edge.end.position, out Vector2 intersectPoint))
-				{
-					intersections.Add(edge, intersectPoint);
-				}
-			}
-
-			return intersections.Count > 0;
-		}
-
-		/// <summary>
-		/// If any exist, returns a list of edge-bool pairs of oob edges and 
-		/// whether it's completely oob (true) or partially oob (false).
-		/// </summary>
-		/// <param name="polygon"></param>
-		/// <param name="dictionary"></param>
-		/// <returns></returns>
-		public static bool TryGetOOBEdges(Polygon polygon, out List<VEdge> completelyOOB, out List<VEdge> partialOOB)
-		{
-			completelyOOB = new List<VEdge>();
-			partialOOB = new List<VEdge>();
-
-			foreach (var edge in polygon.GetVoronoiEdges())
-			{
-				bool startOOB = !IsInMapBounds(edge.start.position);
-				bool endOOB = !IsInMapBounds(edge.end.position);
-				if (startOOB && endOOB)
-					completelyOOB.Add(edge);
-				else if (startOOB || endOOB)
-					partialOOB.Add(edge);
-			}
-
-			return completelyOOB.Count > 0 || partialOOB.Count > 0;
-		}
 
 		public static List<Vector3> FindMapBoundsIntersection(Vector3 lineStart, Vector3 lineEnd)
 		{
@@ -679,39 +474,6 @@ namespace AtomosZ.Voronoi
 			if (TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out intersectPoint))
 				return true;
 			return false;
-		}
-
-
-		public static bool TryGetBoundsIntersection(Vector2 lineStart, Vector2 lineEnd, out Dictionary<MapSide, Vector2> intersections, out byte corner)
-		{
-			intersections = new Dictionary<MapSide, Vector2>();
-			corner = (int)MapSide.Inside;
-
-			if (TryGetLineIntersection(topRight, topLeft, lineStart, lineEnd, out Vector2 top))
-			{
-				intersections.Add(MapSide.Top, top);
-				corner |= (int)MapSide.Top;
-			}
-
-			if (TryGetLineIntersection(bottomLeft, bottomRight, lineStart, lineEnd, out Vector2 bottom))
-			{
-				intersections.Add(MapSide.Bottom, bottom);
-				corner |= (int)MapSide.Bottom;
-			}
-
-			if (TryGetLineIntersection(topLeft, bottomLeft, lineStart, lineEnd, out Vector2 left))
-			{
-				intersections.Add(MapSide.Left, left);
-				corner |= (int)MapSide.Left;
-			}
-
-			if (TryGetLineIntersection(bottomRight, topRight, lineStart, lineEnd, out Vector2 right))
-			{
-				intersections.Add(MapSide.Right, right);
-				corner |= (int)MapSide.Right;
-			}
-
-			return intersections.Count > 0;
 		}
 
 
@@ -789,7 +551,7 @@ namespace AtomosZ.Voronoi
 				noiseSettings.mapResolution * mapWidth, noiseSettings.mapResolution * mapHeight, heightMapSettings, noiseSettings, Vector2.zero);
 			DrawNoiseTexture(VoronoiTextureGenerator.TextureFromHeightMap(heightMap));
 
-			
+
 			foreach (var polygon in vGraph.polygons)
 			{
 				GameObject regionGO = Instantiate(regionPrefab, regionHolder);
