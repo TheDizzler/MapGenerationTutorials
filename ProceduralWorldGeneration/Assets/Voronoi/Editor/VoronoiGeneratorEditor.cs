@@ -38,7 +38,9 @@ namespace AtomosZ.Voronoi.EditorTools
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("minDistBtwnSiteAndBorder"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("minDistBtwnCornerAndBorder"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("minEdgeLengthToMerge"));
+					GUI.enabled = false;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("mergeNearCorners"));
+					GUI.enabled = true;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("clampToMapBounds"));
 				}
 

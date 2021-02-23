@@ -84,7 +84,10 @@ namespace AtomosZ.Voronoi
 		public Transform regionHolder;
 		public List<Region> regions;
 
-		public bool mergeNearCorners = true;
+		/// <summary>
+		/// This causes issues that I'd rather not deal with.
+		/// </summary>
+		public bool mergeNearCorners = false;
 		public bool clampToMapBounds = true;
 		public bool createRegions = true;
 
