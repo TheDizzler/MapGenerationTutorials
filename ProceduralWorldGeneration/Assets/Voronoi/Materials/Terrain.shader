@@ -19,10 +19,9 @@
 		struct Input
 		{
 			float3 worldPos;
-			float3 worldNormal;
 		};
 
-		const static int maxColorCount = 8;
+		const static int maxColorCount = 8; // this doesn't work
 		const static float epsilon = 1E-4;
 
 		
@@ -32,7 +31,6 @@
 
 		float minHeight;
 		float maxHeight;
-
 
 
 		float InverseLerp(float a, float b, float value)
@@ -48,7 +46,6 @@
 				float drawStrength = saturate(sign(heightPercent - baseStartHeights[i]));
 				o.Albedo = o.Albedo * (1 - drawStrength) + baseColors[i] * drawStrength;
 			}
-			
 		}
 		ENDCG
 	}

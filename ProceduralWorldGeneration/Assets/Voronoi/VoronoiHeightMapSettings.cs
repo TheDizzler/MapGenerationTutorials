@@ -12,6 +12,8 @@ namespace AtomosZ.Voronoi
 		public bool useFalloff;
 		public AnimationCurve falloffCurve;
 
+		public VoronoiTextureData textureData;
+
 
 		public float minHeight
 		{

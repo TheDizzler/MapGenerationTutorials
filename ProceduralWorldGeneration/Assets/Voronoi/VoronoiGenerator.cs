@@ -102,7 +102,6 @@ namespace AtomosZ.Voronoi
 		[Range(0, 1)]
 		public float amplitude;
 
-		public VoronoiTextureData textureData;
 		public Material regionMaterial;
 		public MeshRenderer noisePreviewMeshRenderer;
 
@@ -566,7 +565,7 @@ namespace AtomosZ.Voronoi
 			// set average height of region
 			foreach (var region in regions)
 			{
-				region.SetRegionHeight(noiseSettings.mapResolution, heightMap.values, regionMaterial);
+				region.SetRegionHeight(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
 			}
 
 

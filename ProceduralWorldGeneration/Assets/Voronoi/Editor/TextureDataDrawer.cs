@@ -14,7 +14,7 @@ namespace AtomosZ.Voronoi.EditorTools
 			// The 6 comes from extra spacing between the fields (2px each)
 			if (colorHeightList == null)
 				return base.GetPropertyHeight(property, label);
-			return (EditorGUIUtility.singleLineHeight + 10) * colorHeightList.count;
+			return EditorGUIUtility.singleLineHeight * 3.5f + (EditorGUIUtility.singleLineHeight + 2) * colorHeightList.count;
 		}
 
 
@@ -26,6 +26,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				colorHeightList = BuildColorHeightList(property);
 			}
 
+			colorHeightList.displayAdd = colorHeightList.count < VoronoiTextureData.MAX_LAYERS;
 			colorHeightList.DoList(position);
 			EditorGUI.EndProperty();
 		}
@@ -34,8 +35,8 @@ namespace AtomosZ.Voronoi.EditorTools
 		private ReorderableList BuildColorHeightList(SerializedProperty property)
 		{
 			var colorHeightMaps = property.FindPropertyRelative("colorHeightMaps");
-			ReorderableList list = new ReorderableList(property.serializedObject, colorHeightMaps, true, true, true, true);
 
+			ReorderableList list = new ReorderableList(property.serializedObject, colorHeightMaps, true, true, true, true);
 			list.drawHeaderCallback = (Rect rect) =>
 			{
 				EditorGUI.LabelField(rect, "Color Height Map");
@@ -49,7 +50,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				Rect baseStartRect = colorRect;
 				baseStartRect.x += colorRect.width;
 				EditorGUIUtility.labelWidth = 50;
-				colorHeightMap.FindPropertyRelative("baseColor").colorValue 
+				colorHeightMap.FindPropertyRelative("baseColor").colorValue
 					= EditorGUI.ColorField(colorRect, new GUIContent("Color"),
 					colorHeightMap.FindPropertyRelative("baseColor").colorValue, true, true, false);
 				colorHeightMap.FindPropertyRelative("baseStartHeight").floatValue

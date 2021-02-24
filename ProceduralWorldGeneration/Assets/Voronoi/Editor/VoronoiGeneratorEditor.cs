@@ -66,13 +66,15 @@ namespace AtomosZ.Voronoi.EditorTools
 					gen.GenerateMap();
 					EditorUtility.SetDirty(target);
 				}
+
+				if (GUILayout.Button("Clear Map"))
+					gen.ClearMap();
 			}
 
 			using (var check = new EditorGUI.ChangeCheckScope())
 			{
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("noiseSettings"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("heightMapSettings"));
-				EditorGUILayout.PropertyField(serializedObject.FindProperty("textureData"));
 				if (check.changed)
 				{
 					gen.GenerateTexture();
@@ -147,7 +149,7 @@ namespace AtomosZ.Voronoi.EditorTools
 
 
 		/// <summary>
-		/// Quad for generating noisy edge.
+		/// Debug quad for generating noisy edge.
 		/// </summary>
 		public class Quad
 		{

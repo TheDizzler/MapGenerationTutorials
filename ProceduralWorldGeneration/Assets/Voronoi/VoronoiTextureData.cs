@@ -6,6 +6,8 @@ namespace AtomosZ.Voronoi
 	[System.Serializable]
 	public class VoronoiTextureData
 	{
+		public const int MAX_LAYERS = 10;
+
 		public List<ColorHeightMapData> colorHeightMaps;
 
 		float savedMinHeight;
@@ -19,6 +21,9 @@ namespace AtomosZ.Voronoi
 				Debug.LogWarning("No color map set");
 				return;
 			}
+
+			material.SetColorArray("baseColors", new Color[MAX_LAYERS]); // this is needed to prevent shader errors
+			material.SetFloatArray("baseStartHeights", new float[MAX_LAYERS]);
 
 			material.SetInt("layerCount", colorHeightMaps.Count);
 			material.SetColorArray("baseColors", GetBaseColors());
