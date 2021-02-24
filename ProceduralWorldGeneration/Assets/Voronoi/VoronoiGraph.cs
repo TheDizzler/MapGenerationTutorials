@@ -60,6 +60,24 @@ namespace AtomosZ.Voronoi
 				polygons.Add(poly);
 			}
 
+			if (polygons[0].corners == null || polygons[1].corners == null
+				|| polygons[2].corners == null || polygons[3].corners == null)
+			{
+				logMsgs = new List<string>();
+
+				logMsgs.Add("****** Error found on Seed: " + generator.randomSeed + "******");
+				logMsgs.Add("Map dimensions: " + generator.mapWidth + ", " + generator.mapHeight);
+				logMsgs.Add("Region amt: " + generator.regionAmount);
+				logMsgs.Add("MinSqrDistBtwnSites: " + generator.minSqrDistBtwnSites);
+				logMsgs.Add("MinDistBtwnSiteAndBorder: " + generator.minDistBtwnSiteAndBorder);
+				logMsgs.Add("MinDistBtwnCornerAndBorder: " + generator.minDistBtwnCornerAndBorder);
+				logMsgs.Add("MinEdgeLengthToMerge: " + generator.minEdgeLengthToMerge);
+				logMsgs.Add("Merge near corners: " + generator.mergeNearCorners);
+				logMsgs.Add("******************************************\n");
+				logMsgs.Add("Corner polygon did not make it passed initial generation");
+				System.IO.File.WriteAllLines(logFilePath + "BorderCornerDeletedIssue_" + generator.randomSeed + ".txt", logMsgs);
+				Log("Corner polygon did not make it passed initial generation", LogType.Exception, false);
+			}
 			VoronoiHelper.Associate(polygons[0], mapCorners[TopLeftCornerByte]);
 			VoronoiHelper.Associate(polygons[1], mapCorners[TopRightCornerByte]);
 			VoronoiHelper.Associate(polygons[2], mapCorners[BottomRightCornerByte]);
@@ -552,7 +570,8 @@ namespace AtomosZ.Voronoi
 		/// </summary>
 		/// <param name="msg"></param>
 		/// <param name="logType"></param>
-		/// <param name="silentLogging"></param>
+		/// <param name="silentLogging">If this msg should be saved to log file but don't need
+		/// to spam the console, keep as true.</param>
 		private void Log(string msg, LogType logType = LogType.Normal, bool silentLogging = true)
 		{
 			logMsgs.Add(logType.ToString() + ": " + msg);
