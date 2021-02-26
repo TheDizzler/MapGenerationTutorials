@@ -393,12 +393,29 @@ namespace AtomosZ.Voronoi.EditorTools
 			}
 
 			if (gen.regions != null && gen.viewRegionIDs)
+			{
 				foreach (var region in gen.regions)
 				{
 					if (region == null || region.polygon == null)
 						break;
 					Handles.Label(region.polygon.centroid.position, "" + region.id, style);
 				}
+			}
+
+			if (VoronoiGraph.uniqueCorners != null)
+			{
+				foreach (Corner corner in VoronoiGraph.uniqueCorners)
+				{
+					if (corner.downSlope != null)
+					{
+						Vector3 cornerPos = Quaternion.AngleAxis(90, Vector3.right) * corner.position;
+						Vector3 targetPos = Quaternion.AngleAxis(90, Vector3.right) * corner.downSlope.position;
+
+						Handles.ArrowHandleCap(0, cornerPos,
+							Quaternion.LookRotation(targetPos - cornerPos, Vector3.up), 1, EventType.Repaint);
+					}
+				}
+			}
 		}
 	}
 }

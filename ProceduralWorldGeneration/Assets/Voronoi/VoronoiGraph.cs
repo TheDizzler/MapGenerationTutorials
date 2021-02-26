@@ -21,6 +21,7 @@ namespace AtomosZ.Voronoi
 		private static DelaunayGraph delaunayGraph;
 
 		public List<Polygon> polygons;
+
 		private List<Corner> removeCorners;
 		private VoronoiGenerator generator;
 		private int breakCount = 0;

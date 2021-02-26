@@ -56,6 +56,11 @@ namespace AtomosZ.Voronoi
 		/// </summary>
 		public bool isInvalidated = false;
 
+		/// <summary>
+		/// The steepest downslope from this corner. If no downslopes from here, then null.
+		/// </summary>
+		public Corner downSlope = null;
+
 
 		public Corner(DelaunayTriangle triangle, int cornerNum) : base(triangle.realCenter)
 		{

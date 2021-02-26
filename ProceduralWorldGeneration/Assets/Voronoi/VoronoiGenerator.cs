@@ -586,6 +586,25 @@ namespace AtomosZ.Voronoi
 				region.AssignElevations(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
 				region.CreateMeshes();
 			}
+
+			// calculate corner slopes
+			foreach (Corner corner in VoronoiGraph.uniqueCorners)
+			{
+				float steepestIncline = 0;
+				Corner steepest = null;
+				foreach (var edge in corner.connectedEdges)
+				{
+					Corner otherCorner = edge.GetOppositeSite(corner);
+					Vector3 dir = (otherCorner.position - corner.position).normalized;
+					if (dir.z > steepestIncline)
+					{
+						steepest = otherCorner;
+						steepestIncline = dir.z;
+					}
+				}
+
+				corner.downSlope = steepest;
+			}
 		}
 
 		public void GenerateTexture()
