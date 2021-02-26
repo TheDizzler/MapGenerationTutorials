@@ -103,6 +103,7 @@ namespace AtomosZ.Voronoi
 		public float amplitude;
 
 		public Material regionMaterial;
+		public Material sideMaterial;
 		public MeshRenderer noisePreviewMeshRenderer;
 
 		// Noisy edge test variables
@@ -119,6 +120,7 @@ namespace AtomosZ.Voronoi
 
 		private HeightMap heightMap;
 		public bool borderSettingsFoldout;
+		public bool viewRegionIDs = false;
 
 
 		void Start()
@@ -561,18 +563,25 @@ namespace AtomosZ.Voronoi
 			}
 
 			GenerateTexture();
-			
+
 			// set average height of region
 			foreach (var region in regions)
 			{
 				region.SetRegionHeight(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
 			}
 
+			// set corner vertices to average of connected regions
+			foreach (var region in regions)
+			{
+				region.SetBorderHeights();
+				region.CreateMeshes();
+			}
+		}
 
 		public void GenerateTexture()
 		{
-			textureData.ApplyToMaterial(regionMaterial);
-			textureData.UpdateMeshHeights(regionMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
+			heightMapSettings.textureData.ApplyToMaterial(regionMaterial);
+			heightMapSettings.textureData.UpdateMeshHeights(regionMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
 			regionMaterial.SetFloat("minHeight", heightMapSettings.minHeight);
 			regionMaterial.SetFloat("maxHeight", heightMapSettings.maxHeight);
 		}

@@ -29,6 +29,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				mapGenerationSettingsFoldout = EditorGUILayout.Foldout(mapGenerationSettingsFoldout, new GUIContent("Map Generation Settings"));
 				if (mapGenerationSettingsFoldout)
 				{
+					EditorGUI.indentLevel = 1;
 					gen.newRandomSeed = EditorGUILayout.Toggle(new GUIContent("New RandomSeed"), gen.newRandomSeed);
 					gen.randomSeed = EditorGUILayout.DelayedTextField(new GUIContent("RandomSeed"), gen.randomSeed);
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("mapWidth"));
@@ -42,20 +43,23 @@ namespace AtomosZ.Voronoi.EditorTools
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("mergeNearCorners"));
 					GUI.enabled = true;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("clampToMapBounds"));
+					EditorGUI.indentLevel = 0;
 				}
 
 				gen.borderSettingsFoldout = EditorGUILayout.Foldout(gen.borderSettingsFoldout, new GUIContent("Border Settings"));
 				if (gen.borderSettingsFoldout)
 				{
+					EditorGUI.indentLevel = 1;
 					bool borders = EditorGUILayout.Toggle(new GUIContent("Show Borders"), gen.bordersEnabled);
 					if (borders != gen.bordersEnabled)
 						gen.ToggleBorders(borders);
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("subdivisions"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("amplitude"));
-					EditorGUILayout.PropertyField(serializedObject.FindProperty("regionMaterial"));
+					EditorGUI.indentLevel = 0;
 				}
 
-
+				EditorGUILayout.PropertyField(serializedObject.FindProperty("regionMaterial"));
+				EditorGUILayout.PropertyField(serializedObject.FindProperty("sideMaterial"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("regionPrefab"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("regionHolder"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("noisePreviewMeshRenderer"));
@@ -84,6 +88,7 @@ namespace AtomosZ.Voronoi.EditorTools
 			gen.mapDebugFoldout = EditorGUILayout.Foldout(gen.mapDebugFoldout, new GUIContent("Map Debug Settings"));
 			if (gen.mapDebugFoldout)
 			{
+				EditorGUI.indentLevel = 1;
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewDelaunayCircles"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewDelaunayTriangles"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewCenteroids"));
@@ -94,18 +99,22 @@ namespace AtomosZ.Voronoi.EditorTools
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewIntersections"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewIntersectionIDs"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewIntersectionDirections"));
+				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewRegionIDs"));
 				gen.debugBorders = EditorGUILayout.Toggle(new GUIContent("Debug Borders"), gen.debugBorders);
 				if (gen.debugBorders)
 				{
+					EditorGUI.indentLevel = 2;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("topBorder"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("rightBorder"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("bottomBorder"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("leftBorder"));
+					EditorGUI.indentLevel = 1;
 				}
 
 				gen.debugNoisyLine = EditorGUILayout.Foldout(gen.debugNoisyLine, new GUIContent("Noisy Line Debug"));
 				if (gen.debugNoisyLine)
 				{
+					EditorGUI.indentLevel = 2;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("subdivisions"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("amplitude"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("startNoisy"));
@@ -119,7 +128,10 @@ namespace AtomosZ.Voronoi.EditorTools
 						gen.GenerateNoisyLineDebug();
 						EditorUtility.SetDirty(target);
 					}
+					EditorGUI.indentLevel = 1;
 				}
+
+				EditorGUI.indentLevel = 0;
 			}
 
 			serializedObject.ApplyModifiedProperties();
@@ -380,10 +392,10 @@ namespace AtomosZ.Voronoi.EditorTools
 					Handles.SphereHandleCap(0, corner.position, Quaternion.identity, .175f, EventType.Repaint);
 			}
 
-			if (gen.regions != null)
+			if (gen.regions != null && gen.viewRegionIDs)
 				foreach (var region in gen.regions)
 				{
-					if (region.polygon == null)
+					if (region == null || region.polygon == null)
 						break;
 					Handles.Label(region.polygon.centroid.position, "" + region.id, style);
 				}

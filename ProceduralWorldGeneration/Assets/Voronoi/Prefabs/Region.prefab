@@ -46,10 +46,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   id: 0
-  nudgeToCenterAmount: 0.05
-  borderWidth: 0.127
   regionHeight: 0
-  baseHeight: {x: 0, y: 0, z: 0}
+  baseHeight: {x: 0, y: 0, z: 5}
   borderRenderer: {fileID: 4519601547260159146, guid: 376bf631b3827a7479dcc358add61667,
     type: 3}
   borders: {fileID: 2632372161788597719}

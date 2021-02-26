@@ -7,14 +7,14 @@ namespace AtomosZ.Voronoi
 {
 	public class VEdge : Edge<Corner>
 	{
-		/// <summary>
-		/// Just a little nudge to pop the border out a bit for visibility.
-		/// </summary>
-		public static readonly Vector3 borderZOffset = new Vector3(0, 0, -.15f);
 		public static int count = 0;
 		private static float minSegmentLengthToSubdivide = .75f;
 
 		public List<Vector3> segments;
+		/// <summary>
+		/// Have heights been calculated?
+		/// </summary>
+		public bool heightsSet = false;
 
 		private List<Polygon> polygons = new List<Polygon>();
 		private DEdge pairedEdge;
@@ -22,7 +22,7 @@ namespace AtomosZ.Voronoi
 		/// A constraint to prevent sharp, ugly jaggies.
 		/// </summary>
 		private float maxSegmentDistanceFromOrigin;
-
+		
 
 		public VEdge(Corner p1, Corner p2) : base(p1, p2)
 		{

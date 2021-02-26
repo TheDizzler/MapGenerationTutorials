@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using AtomosZ.Voronoi.Helpers;
+using AtomosZ.Voronoi.Regions;
 using UnityEngine;
 
 namespace AtomosZ.Voronoi
@@ -19,11 +20,14 @@ namespace AtomosZ.Voronoi
 		/// </summary>
 		private List<VEdge> voronoiEdges = new List<VEdge>();
 		public List<Corner> oobCorners = new List<Corner>();
+
 		/// <summary>
 		/// Polygon has at least one corner on a map border.
 		/// </summary>
 		public bool isOnBorder;
 		public bool isInvalid = false;
+
+		public Region region;
 
 
 		public Polygon(Centroid centroidSite)
@@ -36,7 +40,7 @@ namespace AtomosZ.Voronoi
 
 		public string GetName()
 		{
-			string name = "";
+			string name = id +": ";
 			for (int i = 0; i < corners.Count; ++i)
 			{
 				name += corners[i].num;
