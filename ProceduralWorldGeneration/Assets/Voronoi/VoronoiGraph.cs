@@ -291,7 +291,7 @@ namespace AtomosZ.Voronoi
 					if (sharedPolygons.Count != 1)
 					{
 						Log("Unusual shared polygon count: " + sharedPolygons.Count
-							+ "\nedge: " + currentBCE.edge.num + " Next edge: " + nextBCE.edge.num, LogType.Exception);
+							+ "\nedge: " + currentBCE.edge.id + " Next edge: " + nextBCE.edge.id, LogType.Exception);
 					}
 
 					currentPolygon = sharedPolygons[0];
@@ -352,7 +352,7 @@ namespace AtomosZ.Voronoi
 					{
 						if (isCornerCutter && TryGetCornerOOBofSameSideAs(borderCorners[0].position, edge, out Corner sameSideCorner, out MapSide mapSide))
 						{ // skip this edge. It may give us invalid polygon results later.
-							Log("Ignoring edge: " + edge.num + " corner: " + sameSideCorner.num);
+							Log("Ignoring edge: " + edge.id + " corner: " + sameSideCorner.num);
 							debugEdges.Add(edge);
 							intersections.Remove(mapSide);
 						}
@@ -393,13 +393,13 @@ namespace AtomosZ.Voronoi
 				MapSide mapSide;
 				if (borderCorners.Count != 1)
 				{
-					Log("Ignoring edge with two on border corners: " + edge.num);
+					Log("Ignoring edge with two on border corners: " + edge.id);
 					return false;
 				}
 
 				if (!edge.GetOppositeSite(borderCorners[0]).isOOB)
 				{
-					Log("Ignoring partially inbounds edge: " + edge.num);
+					Log("Ignoring partially inbounds edge: " + edge.id);
 					return false;
 				}
 

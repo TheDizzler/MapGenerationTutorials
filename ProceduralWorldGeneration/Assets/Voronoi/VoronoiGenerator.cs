@@ -140,11 +140,27 @@ namespace AtomosZ.Voronoi
 
 		public void ToggleBorders(bool borders)
 		{
-			bordersEnabled = borders;
+			bordersEnabled = borders;	
 			if (regions != null)
 			{
+				bool fixLostRegions = false;
 				foreach (var region in regions)
+				{
+					if (region == null)
+					{
+						// refind regions
+						fixLostRegions = true;
+						break;
+					}
+
 					region.ToggleBorder(bordersEnabled);
+				}
+
+				if (fixLostRegions)
+				{
+					regions = new List<Region>(FindObjectsOfType<Region>());
+					ToggleBorders(bordersEnabled);
+				}
 			}
 		}
 
@@ -567,7 +583,7 @@ namespace AtomosZ.Voronoi
 			// set average height of region
 			foreach (var region in regions)
 			{
-				region.SetCornerHeights(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
+				region.AssignElevations(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
 				region.CreateMeshes();
 			}
 		}

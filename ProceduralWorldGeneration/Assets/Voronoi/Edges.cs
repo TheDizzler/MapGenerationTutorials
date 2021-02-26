@@ -26,7 +26,7 @@ namespace AtomosZ.Voronoi
 
 		public VEdge(Corner p1, Corner p2) : base(p1, p2)
 		{
-			num = count++;
+			id = count++;
 			p1.connectedEdges.Add(this);
 			p2.connectedEdges.Add(this);
 		}
@@ -42,7 +42,7 @@ namespace AtomosZ.Voronoi
 		public void Remove(Polygon polygon)
 		{
 			polygons.Remove(polygon);
-			Debug.Log("Edge " + num + " has no polygons - deleting");
+			Debug.Log("Edge " + id + " has no polygons - deleting");
 			VoronoiGraph.uniqueVEdges.Remove(this);
 		}
 
@@ -72,8 +72,7 @@ namespace AtomosZ.Voronoi
 			if (polygons.Count != 2)
 			{
 				if (polygons.Count > 2 || polygons.Count == 0)
-					throw new Exception("Invalid polygon count in edge " + num + ". Count: " + polygons.Count);
-				//Debug.LogWarning("Edge not connected to 2 polygons. Cannot create noisy edge.");
+					throw new Exception("Invalid polygon count in edge " + id + ". Count: " + polygons.Count);
 				CreateSimpleBorder();
 				return;
 			}
@@ -233,7 +232,7 @@ namespace AtomosZ.Voronoi
 
 		public DEdge(Centroid p1, Centroid p2) : base(p1, p2)
 		{
-			num = count++;
+			id = count++;
 			p1.connectedEdges.Add(this);
 			p2.connectedEdges.Add(this);
 		}
@@ -245,7 +244,7 @@ namespace AtomosZ.Voronoi
 	public abstract class Edge<TSite> where TSite : Site
 	{
 		public TSite start, end;
-		public int num;
+		public int id;
 
 
 		public Edge(TSite p1, TSite p2)

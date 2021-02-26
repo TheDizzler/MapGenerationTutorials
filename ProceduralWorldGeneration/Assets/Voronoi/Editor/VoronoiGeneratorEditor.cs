@@ -41,8 +41,8 @@ namespace AtomosZ.Voronoi.EditorTools
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("minEdgeLengthToMerge"));
 					GUI.enabled = false;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("mergeNearCorners"));
-					GUI.enabled = true;
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("clampToMapBounds"));
+					GUI.enabled = true;
 					EditorGUI.indentLevel = 0;
 				}
 
@@ -348,7 +348,7 @@ namespace AtomosZ.Voronoi.EditorTools
 					if (gen.viewEdgeIDs)
 					{
 						style.normal.textColor = Color.cyan;
-						Handles.Label((edge.start.position + edge.end.position) * .5f + textOffset, "" + edge.num, style);
+						Handles.Label((edge.start.position + edge.end.position) * .5f + textOffset, "" + edge.id, style);
 					}
 				}
 

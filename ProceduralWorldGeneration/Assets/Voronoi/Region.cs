@@ -67,7 +67,7 @@ namespace AtomosZ.Voronoi.Regions
 		}
 
 
-		public void SetCornerHeights(int mapResolution, HeightMap heightMap, Material regionMat, Material sideMat)
+		public void AssignElevations(int mapResolution, HeightMap heightMap, Material regionMat, Material sideMat)
 		{
 			float avgHeight = 0;
 			float heighestPoint = 0;
