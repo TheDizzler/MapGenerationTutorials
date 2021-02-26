@@ -88,8 +88,6 @@ namespace AtomosZ.Voronoi.Regions
 			topMeshRenderer.sharedMaterial = regionMat;
 			sideMeshRenderer.sharedMaterial = sideMat;
 
-			borders.transform.localPosition = new Vector3(0, 0, heighestPoint) + RegionBorder.borderZOffset;
-
 			OrderEdgeSegments();
 			foreach (var regionBorder in regionBorders)
 				regionBorder.ComputeVertices();
@@ -392,6 +390,8 @@ namespace AtomosZ.Voronoi.Regions
 				{
 					borderVertices.Add(edge.segments[i]);
 				}
+
+				lineRenderer.SetPositions(edge.segments.ToArray());
 
 				if (!Mathf.Approximately(edge.start.position.x, borderVertices[0].x)
 					&& !Mathf.Approximately(edge.start.position.y, borderVertices[0].y))
