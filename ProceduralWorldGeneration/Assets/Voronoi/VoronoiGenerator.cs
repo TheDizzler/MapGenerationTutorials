@@ -567,13 +567,7 @@ namespace AtomosZ.Voronoi
 			// set average height of region
 			foreach (var region in regions)
 			{
-				region.SetRegionHeight(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
-			}
-
-			// set corner vertices to average of connected regions
-			foreach (var region in regions)
-			{
-				region.SetBorderHeights();
+				region.SetCornerHeights(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
 				region.CreateMeshes();
 			}
 		}

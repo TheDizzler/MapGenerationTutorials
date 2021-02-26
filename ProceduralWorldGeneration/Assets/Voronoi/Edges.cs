@@ -14,7 +14,7 @@ namespace AtomosZ.Voronoi
 		/// <summary>
 		/// Have heights been calculated?
 		/// </summary>
-		public bool heightsSet = false;
+		public bool isHeightsSet = false;
 
 		private List<Polygon> polygons = new List<Polygon>();
 		private DEdge pairedEdge;

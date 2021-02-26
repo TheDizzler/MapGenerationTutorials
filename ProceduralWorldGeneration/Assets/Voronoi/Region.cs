@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace AtomosZ.Voronoi.Regions
 {
-	[ExecuteInEditMode]
 	public class Region : MonoBehaviour
 	{
 		/// <summary>
@@ -14,10 +13,11 @@ namespace AtomosZ.Voronoi.Regions
 
 		[Tooltip("Debug ID")]
 		public int id = 0;
-		public float nudgeToCenterAmount = .2f;
-		public float borderWidth = .127f;
-		[Tooltip("This is negative because -z is up, +z is down")]
+
+		[Tooltip("Center point height (average of all corners) of the region." +
+			" This is negative because -z is up, +z is down")]
 		public float regionHeight;
+
 		[SerializeField] private GameObject borderRenderer = null;
 		[SerializeField] private Transform borders = null;
 
@@ -35,17 +35,13 @@ namespace AtomosZ.Voronoi.Regions
 		/// </summary>
 		private Vector3[] topVertices;
 		private Vector3[] sideVertices;
-		//private Vector2[] uvs;
 		private List<int> topTriangles;
 		private List<int> sideTriangles;
 		/// <summary>
 		/// The vertices that make up the border of the region PLUS the center (index 0)
 		/// </summary>
 		private List<Vector3> edgeVertices;
-
-
 		private List<RegionBorder> regionBorders;
-		private float previousRegionHeight;
 
 
 		public void CreateRegion(Polygon poly)
@@ -71,100 +67,58 @@ namespace AtomosZ.Voronoi.Regions
 		}
 
 
-
-		public void SetRegionHeight(int mapResolution, HeightMap heightMap, Material regionMat, Material sideMat)
+		public void SetCornerHeights(int mapResolution, HeightMap heightMap, Material regionMat, Material sideMat)
 		{
-			regionHeight = -heightMap.values[ // negative because -z is up, +z is down
-				(int)(polygon.centroid.position.x * mapResolution),
-				(int)(polygon.centroid.position.y * mapResolution)];
-			previousRegionHeight = regionHeight;
-			polygon.centroid.position.z = regionHeight;
-			borders.transform.localPosition = new Vector3(0, 0, regionHeight) + RegionBorder.borderZOffset;
-			minValue = heightMap.minValue;
-			maxValue = heightMap.maxValue;
+			float avgHeight = 0;
+			float heighestPoint = 0;
+			foreach (Corner corner in polygon.corners)
+			{
+				float height =
+					-heightMap.values[ // negative because -z is up, +z is down
+						(int)(corner.position.x * mapResolution),
+						(int)(corner.position.y * mapResolution)];
+				corner.position.z = height;
+				avgHeight += height;
+				heighestPoint = Mathf.Min(heighestPoint, height);
+			}
+
+			avgHeight /= polygon.corners.Count; // I'd prefer to weigh the avg height by distance to corners
+			polygon.centroid.position.z = avgHeight;
+
 			topMeshRenderer.sharedMaterial = regionMat;
 			sideMeshRenderer.sharedMaterial = sideMat;
-			
-		}
 
+			borders.transform.localPosition = new Vector3(0, 0, heighestPoint) + RegionBorder.borderZOffset;
 
-		public void SetBorderHeights()
-		{
 			OrderEdgeSegments();
 			foreach (var regionBorder in regionBorders)
-			{
-				if (regionBorder.edge.heightsSet)
-				{
-					regionBorder.ComputeVertices();
-					continue;
-				}
-
-				regionBorder.edge.heightsSet = true;
-
-				float startCornerHeight = 0;
-				Corner startCorner = regionBorder.startCorner;
-				List<Polygon> connectedPolygons = new List<Polygon>();
-				connectedPolygons.AddRange(startCorner.polygons);
-				foreach (Polygon polygon in connectedPolygons)
-				{
-					startCornerHeight += polygon.region.regionHeight;
-				}
-
-				startCornerHeight /= connectedPolygons.Count;
-				Vector3 newPos = regionBorder.startCorner.position;
-				newPos.z = startCornerHeight;
-				startCorner.position = newPos;
-
-				float endCornerHeight = 0;
-				Corner endCorner = regionBorder.endCorner;
-				connectedPolygons.Clear();
-				connectedPolygons.AddRange(endCorner.polygons);
-				foreach (Polygon polygon in connectedPolygons)
-				{
-					endCornerHeight += polygon.region.regionHeight;
-				}
-
-				endCornerHeight /= connectedPolygons.Count;
-				newPos = regionBorder.endCorner.position;
-				newPos.z = endCornerHeight;
-				endCorner.position = newPos;
-
-				var edge = regionBorder.edge;
-				float segmentCount = edge.segments.Count;
-				for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
-				{
-					float newHeight = Mathf.Lerp(startCornerHeight, endCornerHeight,
-						segmentIndex / (segmentCount - 1));
-					newPos = edge.segments[segmentIndex];
-					newPos.z = newHeight;
-					edge.segments[segmentIndex] = newPos;
-				}
-
 				regionBorder.ComputeVertices();
-			}
 		}
-
-
+		
+		/// <summary>
+		/// Called when region height is changed in editor.
+		/// This algo no longer works with corner-driven heights
+		/// </summary>
 		public void UpdateMeshHeights()
 		{
-			float diff = regionHeight - previousRegionHeight;
-			var verts = topMeshFilter.sharedMesh.vertices;
-			for (int i = 0; i < verts.Length; ++i)
-			{
-				verts[i].z = verts[i].z + diff;
-			}
-			topMeshFilter.sharedMesh.SetVertices(verts);
-			topMesh.RecalculateNormals();
+			//float diff = regionHeight - previousRegionHeight;
+			//var verts = topMeshFilter.sharedMesh.vertices;
+			//for (int i = 0; i < verts.Length; ++i)
+			//{
+			//	verts[i].z = verts[i].z + diff;
+			//}
+			//topMeshFilter.sharedMesh.SetVertices(verts);
+			//topMesh.RecalculateNormals();
 
-			verts = sideMeshFilter.sharedMesh.vertices;
-			for (int i = 0; i < verts.Length; i += 2)
-			{
-				verts[i].z = verts[i].z + diff;
-			}
-			sideMeshFilter.sharedMesh.SetVertices(verts);
-			sideMesh.RecalculateNormals();
+			//verts = sideMeshFilter.sharedMesh.vertices;
+			//for (int i = 0; i < verts.Length; i += 2)
+			//{
+			//	verts[i].z = verts[i].z + diff;
+			//}
+			//sideMeshFilter.sharedMesh.SetVertices(verts);
+			//sideMesh.RecalculateNormals();
 
-			previousRegionHeight = regionHeight;
+			//previousRegionHeight = regionHeight;
 		}
 
 
@@ -186,8 +140,6 @@ namespace AtomosZ.Voronoi.Regions
 				RegionBorder border = new RegionBorder(edge, Instantiate(borderRenderer, borders));
 				regionBorders.Add(border);
 			}
-
-
 		}
 
 		/// <summary>
@@ -417,6 +369,24 @@ namespace AtomosZ.Voronoi.Regions
 			/// </summary>
 			public void ComputeVertices()
 			{
+				if (!edge.isHeightsSet)
+				{
+					edge.isHeightsSet = true;
+					// set segment points to heights between end points
+					// we COULD introduce some noise to give more variation
+					float startCornerHeight = startCorner.position.z;
+					float endCornerHeight = endCorner.position.z;
+					float segmentCount = edge.segments.Count;
+					for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
+					{
+						float newHeight = Mathf.Lerp(startCornerHeight, endCornerHeight,
+							segmentIndex / (segmentCount - 1));
+						Vector3 newPos = edge.segments[segmentIndex];
+						newPos.z = newHeight;
+						edge.segments[segmentIndex] = newPos;
+					}
+				}
+
 				borderVertices.Clear();
 				for (int i = 0; i < edge.segments.Count; ++i)
 				{

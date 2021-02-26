@@ -63,11 +63,11 @@ namespace AtomosZ.Voronoi
 			float halfHeight = mapHeight * .5f;
 
 
-			float[,] noiseMap = new float[mapWidth, mapHeight];
+			float[,] noiseMap = new float[mapWidth + 1, mapHeight + 1];
 
-			for (int y = 0; y < mapHeight; ++y)
+			for (int y = 0; y < mapHeight + 1; ++y)
 			{
-				for (int x = 0; x < mapWidth; ++x)
+				for (int x = 0; x < mapWidth + 1; ++x)
 				{
 					amplitude = 1;
 					frequency = 1;
@@ -103,9 +103,9 @@ namespace AtomosZ.Voronoi
 
 			if (noiseSettings.normalizeMode == NormalizeMode.Local)
 			{
-				for (int y = 0; y < mapHeight; ++y)
+				for (int y = 0; y < mapHeight + 1; ++y)
 				{
-					for (int x = 0; x < mapWidth; ++x)
+					for (int x = 0; x < mapWidth + 1; ++x)
 					{
 						noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
 					}
