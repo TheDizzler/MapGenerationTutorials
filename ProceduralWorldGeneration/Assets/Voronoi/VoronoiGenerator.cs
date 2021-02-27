@@ -84,6 +84,7 @@ namespace AtomosZ.Voronoi
 		public Transform regionHolder;
 		public List<Region> regions;
 
+		public BiomeSettings biomeSettings;
 		/// <summary>
 		/// This causes issues that I'd rather not deal with.
 		/// </summary>
@@ -605,6 +606,24 @@ namespace AtomosZ.Voronoi
 
 				corner.downSlope = steepest;
 			}
+
+			float CHANCE_FOR_RIVER = 3.5f;
+			float MIN_HEIGHT_FOR_RIVER = 4f;
+			// just a simple random generator to make test rivers
+			List<VEdge> rivers = new List<VEdge>();
+			foreach (VEdge edge in VoronoiGraph.uniqueVEdges)
+			{
+				float highestPoint = -Mathf.Min(edge.start.position.z, edge.end.position.z);
+				if (highestPoint > MIN_HEIGHT_FOR_RIVER
+					&& rng.NextDouble() * highestPoint >= CHANCE_FOR_RIVER)
+				{
+					edge.isRiver = true;
+					rivers.Add(edge);
+					foreach (var polygon in edge.GetPolygons())
+						polygon.region.UpdateBorder(edge);
+				}
+			}
+
 		}
 
 		public void GenerateTexture()

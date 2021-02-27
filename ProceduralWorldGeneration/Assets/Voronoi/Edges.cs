@@ -22,7 +22,7 @@ namespace AtomosZ.Voronoi
 		/// A constraint to prevent sharp, ugly jaggies.
 		/// </summary>
 		private float maxSegmentDistanceFromOrigin;
-		
+		internal bool isRiver;
 
 		public VEdge(Corner p1, Corner p2) : base(p1, p2)
 		{

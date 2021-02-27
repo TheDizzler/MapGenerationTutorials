@@ -14,8 +14,10 @@ namespace AtomosZ.Voronoi.Regions
 		[Tooltip("Debug ID")]
 		public int id = 0;
 
-		[Tooltip("Center point height (average of all corners) of the region." +
-			" This is negative because -z is up, +z is down")]
+		/// <summary>
+		/// Center point height (average of all corners) of the region.
+		/// NOTE: when calculating 3d space this value is needs to be negative!
+		/// </summary>
 		public float regionHeight;
 
 		[SerializeField] private GameObject borderRenderer = null;
@@ -84,6 +86,7 @@ namespace AtomosZ.Voronoi.Regions
 
 			avgHeight /= polygon.corners.Count; // I'd prefer to weigh the avg height by distance to corners
 			polygon.centroid.position.z = avgHeight;
+			regionHeight = -avgHeight;
 
 			topMeshRenderer.sharedMaterial = regionMat;
 			sideMeshRenderer.sharedMaterial = sideMat;
@@ -92,7 +95,7 @@ namespace AtomosZ.Voronoi.Regions
 			foreach (var regionBorder in regionBorders)
 				regionBorder.ComputeVertices();
 		}
-		
+
 		/// <summary>
 		/// Called when region height is changed in editor.
 		/// This algo no longer works with corner-driven heights
@@ -391,6 +394,9 @@ namespace AtomosZ.Voronoi.Regions
 					borderVertices.Add(edge.segments[i]);
 				}
 
+
+				UpdateRiver();
+
 				lineRenderer.SetPositions(edge.segments.ToArray());
 
 				if (!Mathf.Approximately(edge.start.position.x, borderVertices[0].x)
@@ -415,6 +421,27 @@ namespace AtomosZ.Voronoi.Regions
 				startCorner = edge.start;
 				endCorner = edge.end;
 			}
+
+			public void UpdateRiver()
+			{
+				if (edge.isRiver)
+				{
+					lineRenderer.startColor = BiomeSettings.RiverColor;
+					lineRenderer.endColor = BiomeSettings.RiverColor;
+				}
+				else
+				{
+					lineRenderer.startColor = borderColor;
+					lineRenderer.endColor = borderColor;
+				}
+			}
+		}
+
+		public void UpdateBorder(VEdge edge)
+		{
+			foreach (var border in regionBorders)
+				if (border.edge == edge)
+					border.UpdateRiver();
 		}
 	}
 }
