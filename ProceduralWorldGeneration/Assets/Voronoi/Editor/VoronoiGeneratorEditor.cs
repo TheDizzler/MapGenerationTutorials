@@ -100,6 +100,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewIntersectionIDs"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewIntersectionDirections"));
 				EditorGUILayout.PropertyField(serializedObject.FindProperty("viewRegionIDs"));
+				EditorGUILayout.PropertyField(serializedObject.FindProperty("debugSlopeDirections"));
 				gen.debugBorders = EditorGUILayout.Toggle(new GUIContent("Debug Borders"), gen.debugBorders);
 				if (gen.debugBorders)
 				{
@@ -115,8 +116,9 @@ namespace AtomosZ.Voronoi.EditorTools
 				if (gen.debugNoisyLine)
 				{
 					EditorGUI.indentLevel = 2;
-					EditorGUILayout.PropertyField(serializedObject.FindProperty("subdivisions"));
-					EditorGUILayout.PropertyField(serializedObject.FindProperty("amplitude"));
+
+					EditorGUILayout.PropertyField(serializedObject.FindProperty("debugSubdivisions"));
+					EditorGUILayout.PropertyField(serializedObject.FindProperty("debugAmplitude"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("startNoisy"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("endNoisy"));
 					EditorGUILayout.PropertyField(serializedObject.FindProperty("startControl"));
@@ -165,6 +167,7 @@ namespace AtomosZ.Voronoi.EditorTools
 		/// </summary>
 		public class Quad
 		{
+			public List<Vector3> points = new List<Vector3>();
 			private Vector3 control1, control2;
 			private Vector3 line1, line2;
 			private Vector3 midPoint;
@@ -172,37 +175,55 @@ namespace AtomosZ.Voronoi.EditorTools
 			private float tMid;
 
 
-			public Quad(Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2, int subdivisions, float t1, float amplitude)
+			public Quad(
+				Vector3 control1, Vector3 control2, Vector3 line1, Vector3 line2,
+				int subdivisions, float tMid, float amplitude, System.Random rng)
 			{
 				this.control1 = control1;
 				this.control2 = control2;
 				this.line1 = line1;
 				this.line2 = line2;
-				tMid = t1;
+				this.tMid = tMid;
 
+				float lineDist = Vector3.Distance(line1, line2);
+				float controlDist = Vector3.Distance(control1, control2);
+				if (lineDist < controlDist)
+				{
+					float diff = (controlDist - lineDist) * .5f;
+
+					Vector3 newControl1 = Vector3.MoveTowards(control1, control2, diff);
+					Vector3 newControl2 = Vector3.MoveTowards(control2, control1, diff);
+					control1 = newControl1;
+					control2 = newControl2;
+				}
 
 				if (subdivisions > 0)
 				{
-					midPoint = Vector3.Lerp(control1, control2, VoronoiGenerator.GetNewT(t1));
-					CreateSubQuads(subdivisions, amplitude);
+					midPoint = Vector3.Lerp(control1, control2,
+						Mathf.Lerp(tMid, (float)rng.NextDouble(), amplitude));
+					CreateSubQuads(subdivisions, amplitude, rng);
 				}
 			}
 
-			private void CreateSubQuads(int subdivisions, float amplitude)
+			private void CreateSubQuads(int subdivisions, float amplitude, System.Random rng)
 			{
-				//float t1 = VoronoiGenerator.GetNewT(tMid);
-				//float t2 = VoronoiGenerator.GetNewT(tMid);
-
 				Vector3 edgeCenter1 = (line1 + control1) * .5f;
 				Vector3 edgeCenter2 = (line1 + control2) * .5f;
 
-				quads.Add(new Quad(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, tMid, amplitude));
+				quads.Add(new Quad(edgeCenter1, edgeCenter2, line1, midPoint,
+					subdivisions - 1, tMid, amplitude, rng));
 
 				Vector3 edgeCenter3 = (line2 + control1) * .5f;
 				Vector3 edgeCenter4 = (line2 + control2) * .5f;
 
-				quads.Add(new Quad(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, tMid, amplitude));
+				quads.Add(new Quad(edgeCenter3, edgeCenter4, midPoint, line2,
+					subdivisions - 1, tMid, amplitude, rng));
+
+				points.AddRange(quads[0].points);
+				points.Add(midPoint);
+				points.AddRange(quads[1].points);
 			}
+
 
 			public void Draw()
 			{
@@ -212,9 +233,6 @@ namespace AtomosZ.Voronoi.EditorTools
 				Handles.color = new Color(.5f, .5f, .25f, 1);
 				Handles.DrawDottedLine(line2, control1, 2);
 				Handles.DrawDottedLine(line2, control2, 2);
-
-				Handles.color = Color.green;
-				Handles.SphereHandleCap(-1, midPoint, Quaternion.identity, .25f, EventType.Repaint);
 
 				foreach (Quad quad in quads)
 					quad.Draw();
@@ -236,11 +254,18 @@ namespace AtomosZ.Voronoi.EditorTools
 						gen.GenerateNoisyLineDebug();
 					var lr = gen.lr;
 					VoronoiGenerator.TryGetLineIntersections(
-						gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy, out Vector2 intersectPoint, out float t1, out float t2);
+						gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy,
+						out Vector2 intersectPoint, out float t1, out float t2);
 					Debug.Log("t1: " + t1 + " t2: " + t2);
 
-					quad = new Quad(gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy, gen.subdivisions,
-						-t1, gen.amplitude);
+					quad = new Quad(gen.startControl, gen.endControl, gen.startNoisy, gen.endNoisy,
+						gen.debugSubdivisions, -t1, gen.debugAmplitude, new System.Random());
+					List<Vector3> positions = new List<Vector3>();
+					positions.Add(gen.startNoisy);
+					positions.AddRange(quad.points);
+					positions.Add(gen.endNoisy);
+					lr.SetPositions(positions.ToArray());
+
 					gen.wasReset = false;
 				}
 				else
@@ -402,7 +427,7 @@ namespace AtomosZ.Voronoi.EditorTools
 				}
 			}
 
-			if (VoronoiGraph.uniqueCorners != null)
+			if (VoronoiGraph.uniqueCorners != null && gen.debugSlopeDirections)
 			{
 				foreach (Corner corner in VoronoiGraph.uniqueCorners)
 				{

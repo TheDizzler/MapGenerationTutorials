@@ -27,6 +27,9 @@ namespace AtomosZ.Voronoi.EditorTools
 			BiomeSettings biomes = (BiomeSettings)target;
 			EditorStyles.label.wordWrap = true;
 
+			EditorGUILayout.PropertyField(serializedObject.FindProperty("riverSubdivisions"));
+			EditorGUILayout.PropertyField(serializedObject.FindProperty("riverAmplitude"));
+
 			if (biomes.biomeColors.Count != Enum.GetNames(typeof(BiomeType)).Length)
 				for (int i = biomes.biomeColors.Count; i < Enum.GetNames(typeof(BiomeType)).Length; ++i)
 					biomes.biomeColors.Add(Color.black);
@@ -59,6 +62,8 @@ namespace AtomosZ.Voronoi.EditorTools
 			}
 
 			EditorGUILayout.PropertyField(serializedObject.FindProperty("biomeDictionary"));
+
+			serializedObject.ApplyModifiedProperties();
 		}
 
 

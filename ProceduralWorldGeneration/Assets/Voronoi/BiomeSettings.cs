@@ -84,6 +84,11 @@ namespace AtomosZ.Voronoi.Regions
 		public bool isElevationFoldout;
 		public BiomeDictionary biomeDictionary;
 
+		[Range(0, 10)]
+		public int riverSubdivisions;
+		[Range(0, 1)]
+		public float riverAmplitude;
+
 		[System.Serializable]
 		public class BiomeDictionary
 		{

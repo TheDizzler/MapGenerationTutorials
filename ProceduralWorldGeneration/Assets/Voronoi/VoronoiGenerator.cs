@@ -109,6 +109,10 @@ namespace AtomosZ.Voronoi
 
 		// Noisy edge test variables
 		public bool debugNoisyLine;
+		[Range(0, 10)]
+		public int debugSubdivisions;
+		[Range(0, 1)]
+		public float debugAmplitude;
 		public Vector3 startNoisy = Vector3.zero;
 		public Vector3 endNoisy = new Vector3(10, 0);
 		public Vector3 startControl = new Vector3(5, 5);
@@ -122,6 +126,7 @@ namespace AtomosZ.Voronoi
 		private HeightMap heightMap;
 		public bool borderSettingsFoldout;
 		public bool viewRegionIDs = false;
+		public bool debugSlopeDirections = false;
 
 
 		void Start()
@@ -141,7 +146,7 @@ namespace AtomosZ.Voronoi
 
 		public void ToggleBorders(bool borders)
 		{
-			bordersEnabled = borders;	
+			bordersEnabled = borders;
 			if (regions != null)
 			{
 				bool fixLostRegions = false;
@@ -286,10 +291,10 @@ namespace AtomosZ.Voronoi
 		}
 
 
-		public static float GetNewT(float midT)
+		public static float GetNewT(float midT, bool isRiver)
 		{
 			float rnd = (float)instance.rng.NextDouble();
-			return Mathf.Lerp(midT, rnd, instance.amplitude);
+			return Mathf.Lerp(midT, rnd, isRiver ? instance.biomeSettings.riverAmplitude : instance.amplitude);
 		}
 
 		public LineRenderer GenerateNoisyLineDebug()
@@ -302,10 +307,10 @@ namespace AtomosZ.Voronoi
 			lr.startColor = Color.black;
 			lr.endColor = Color.black;
 			lr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
-			lr.widthMultiplier = .12f;
-			lr.numCapVertices = 20;
-			lr.positionCount = (int)Mathf.Pow(2, subdivisions) + 1;
-
+			lr.widthMultiplier = .0127f;
+			lr.numCapVertices = 4;
+			lr.numCornerVertices = 4;
+			lr.positionCount = (int)Mathf.Pow(2, debugSubdivisions) + 1;
 			return lr;
 		}
 
@@ -575,17 +580,14 @@ namespace AtomosZ.Voronoi
 				GameObject regionGO = Instantiate(regionPrefab, regionHolder);
 				Region region = regionGO.GetComponent<Region>();
 				regions.Add(region);
-				region.CreateRegion(polygon);
-				region.ToggleBorder(bordersEnabled);
-			}
+				region.CreateRegion(polygon, regionMaterial, sideMaterial);
 
-			GenerateTexture();
+			}
 
 			// set average height of region
 			foreach (var region in regions)
 			{
-				region.AssignElevations(noiseSettings.mapResolution, heightMap, regionMaterial, sideMaterial);
-				region.CreateMeshes();
+				region.AssignElevations(noiseSettings.mapResolution, heightMap);
 			}
 
 			// calculate corner slopes
@@ -607,9 +609,9 @@ namespace AtomosZ.Voronoi
 				corner.downSlope = steepest;
 			}
 
+			// just a simple random generator to make test rivers
 			float CHANCE_FOR_RIVER = 3.5f;
 			float MIN_HEIGHT_FOR_RIVER = 4f;
-			// just a simple random generator to make test rivers
 			List<VEdge> rivers = new List<VEdge>();
 			foreach (VEdge edge in VoronoiGraph.uniqueVEdges)
 			{
@@ -619,17 +621,25 @@ namespace AtomosZ.Voronoi
 				{
 					edge.isRiver = true;
 					rivers.Add(edge);
-					foreach (var polygon in edge.GetPolygons())
-						polygon.region.UpdateBorder(edge);
 				}
 			}
 
+				GenerateTexture();
+
+			foreach (var region in regions)
+			{
+				region.CreateBordersAndRivers();
+				region.ToggleBorder(bordersEnabled);
+				//region.CreateMeshes();
+				region.TriangulateMesh();
+			}
 		}
 
 		public void GenerateTexture()
 		{
 			heightMapSettings.textureData.ApplyToMaterial(regionMaterial);
-			heightMapSettings.textureData.UpdateMeshHeights(regionMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
+			heightMapSettings.textureData.UpdateMeshHeights(
+				regionMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
 			regionMaterial.SetFloat("minHeight", heightMapSettings.minHeight);
 			regionMaterial.SetFloat("maxHeight", heightMapSettings.maxHeight);
 		}

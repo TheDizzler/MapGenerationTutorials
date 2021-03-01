@@ -8,7 +8,6 @@ namespace AtomosZ.Voronoi
 	public class VEdge : Edge<Corner>
 	{
 		public static int count = 0;
-		private static float minSegmentLengthToSubdivide = .75f;
 
 		public List<Vector3> segments;
 		/// <summary>
@@ -62,7 +61,7 @@ namespace AtomosZ.Voronoi
 		}
 
 		/// <summary>
-		/// https://www.redblobgames.com/maps/noisy-edges/
+		/// Based off of https://www.redblobgames.com/maps/noisy-edges/
 		/// </summary>
 		public void CreateNoisyEdge(int subdivisions)
 		{
@@ -70,50 +69,84 @@ namespace AtomosZ.Voronoi
 				return;
 
 			if (polygons.Count != 2)
-			{
+			{ // probably on the map edge
 				if (polygons.Count > 2 || polygons.Count == 0)
 					throw new Exception("Invalid polygon count in edge " + id + ". Count: " + polygons.Count);
 				CreateSimpleBorder();
 				return;
 			}
 
+			segments = new List<Vector3>();
 
 			pairedEdge = polygons[0].centroid.GetConnectingEdge(polygons[1].centroid);
 			if (pairedEdge == null)
 				throw new Exception("Invalid delaunay edge");
 
-			if (!VoronoiGenerator.TryGetLineIntersection(
-				pairedEdge, this, out Vector2 intersectPoint, out float t1, out float t2)) // t1 is always negative. Is this normal?
+			Vector3 control1 = pairedEdge.start.position;
+			Vector3 control2 = pairedEdge.end.position;
+			if (!VoronoiGenerator.TryGetLineIntersections(
+				control1, control2, start.position, end.position,
+				out Vector2 intersectPoint, out float tMid, out float t2))
 			{
 				Debug.LogWarning("SPECIAL CASE: voronoi and delaunay edges do not meet");
 				CreateSimpleBorder();
 				return;
 			}
 
-			maxSegmentDistanceFromOrigin = Vector3.Distance(start.position, end.position) * .5f;
-
-			if (subdivisions > 0)
-			{
-				segments = CreateSegments(
-					pairedEdge.start.position,
-					pairedEdge.end.position,
-					start.position,
-					end.position,
-					subdivisions, -t1, VoronoiGenerator.GetNewT(-t1));
-				segments.Insert(0, start.position);
-			}
-			else
-			{
-				segments = new List<Vector3>();
-				segments.Add(start.position);
-			}
-
+			segments.Add(start.position);
+			segments.AddRange(
+				CreateSegments(start.position, end.position,
+				control1, control2, subdivisions, -tMid));
 			segments.Add(end.position);
 		}
 
-		public void ReverseSegments()
+		private List<Vector3> CreateSegments(
+			Vector3 lineStart, Vector3 lineEnd,
+			Vector3 control1, Vector3 control2, int subdivisions, float tMid)
 		{
-			segments.Reverse();
+			List<Vector3> newSegments = new List<Vector3>();
+			if (subdivisions > 0)
+			{
+				float lineDist = Vector3.Distance(lineStart, lineEnd);
+				float controlDist = Vector3.Distance(control1, control2);
+				if (lineDist < controlDist)
+				{ // clamp the control points to stop ugly extreme lines
+					float diff = (controlDist - lineDist) * .5f;
+
+					Vector3 newControl1 = Vector3.MoveTowards(control1, control2, diff);
+					Vector3 newControl2 = Vector3.MoveTowards(control2, control1, diff);
+					control1 = newControl1;
+					control2 = newControl2;
+				}
+
+				Vector3 edgeCenter1 = (lineStart + control1) * .5f;
+				Vector3 edgeCenter2 = (lineStart + control2) * .5f;
+
+				Vector3 midPoint = Vector3.Lerp(control1, control2,
+					VoronoiGenerator.GetNewT(tMid, isRiver));
+				newSegments.AddRange(
+					CreateSegments(lineStart, midPoint, edgeCenter1, edgeCenter2, subdivisions - 1, tMid));
+
+				newSegments.Add(midPoint);
+
+				Vector3 edgeCenter3 = (lineEnd + control1) * .5f;
+				Vector3 edgeCenter4 = (lineEnd + control2) * .5f;
+
+				newSegments.AddRange(
+					CreateSegments(midPoint, lineEnd, edgeCenter3, edgeCenter4, subdivisions - 1, tMid));
+			}
+
+			return newSegments;
+		}
+
+
+		/// <summary>
+		/// Reverses start and end point as well as segments if they exist.
+		/// </summary>
+		public void ReverseEndPoints()
+		{
+			if (segments != null)
+				segments.Reverse();
 			var temp = start;
 			start = end;
 			end = temp;
@@ -190,39 +223,6 @@ namespace AtomosZ.Voronoi
 			segments = new List<Vector3>();
 			segments.Add(start.position);
 			segments.Add(end.position);
-		}
-
-		private List<Vector3> CreateSegments(Vector3 control1, Vector3 control2,
-			Vector3 line1, Vector3 line2, int subdivisions, float tMid, float t)
-		{
-			List<Vector3> segmentPoints = new List<Vector3>();
-
-			Vector3 midPoint = Vector3.Lerp(control1, control2, t);
-
-			float dist = Vector3.Distance(midPoint, line1);
-			if (dist > maxSegmentDistanceFromOrigin)
-			{
-				midPoint = Vector3.MoveTowards(midPoint, line1, dist - maxSegmentDistanceFromOrigin);
-			}
-
-			if (subdivisions > 1 && Vector3.Distance(line1, line2) > minSegmentLengthToSubdivide)
-			{
-				float t1 = VoronoiGenerator.GetNewT(tMid);
-				float t2 = VoronoiGenerator.GetNewT(tMid);
-				Vector3 edgeCenter1 = (line1 + control1) * .5f;
-				Vector3 edgeCenter2 = (line1 + control2) * .5f;
-				segmentPoints.AddRange(CreateSegments(edgeCenter1, edgeCenter2, line1, midPoint, subdivisions - 1, tMid, t1));
-
-				segmentPoints.Add(midPoint);
-
-				Vector3 edgeCenter3 = (line2 + control1) * .5f;
-				Vector3 edgeCenter4 = (line2 + control2) * .5f;
-				segmentPoints.AddRange(CreateSegments(edgeCenter3, edgeCenter4, midPoint, line2, subdivisions - 1, tMid, t2));
-			}
-			else
-				segmentPoints.Add(midPoint);
-
-			return segmentPoints;
 		}
 	}
 
